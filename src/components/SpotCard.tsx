@@ -1,10 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Spot } from '../types/spot';
 import { colors, typography } from '../theme';
 
-export default function SpotCard({ spot }: { spot: Spot }) {
+export default function SpotCard({ spot, onPress }: { spot: Spot; onPress?: () => void }) {
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.headerRow}>
         <Text style={styles.nom}>{spot.nom}</Text>
         <View style={styles.regionBadge}>
@@ -24,7 +24,7 @@ export default function SpotCard({ spot }: { spot: Spot }) {
           <Text style={styles.metaText}>{spot.directionsFavorables.join(' / ')}</Text>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

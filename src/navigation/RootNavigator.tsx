@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import SearchScreen from '../screens/SearchScreen';
-import SpotsScreen from '../screens/SpotsScreen';
+import SpotsStackNavigator from './SpotsStackNavigator';
 import CarpoolScreen from '../screens/CarpoolScreen';
 import ForumScreen from '../screens/ForumScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -45,7 +45,7 @@ export default function RootNavigator() {
         })}
       >
         <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Recherche' }} />
-        <Tab.Screen name="Spots" component={SpotsScreen} options={{ title: 'Spots' }} />
+        <Tab.Screen name="Spots" component={SpotsStackNavigator} options={{ title: 'Spots' }} />
         <Tab.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Covoiturage' }} />
         <Tab.Screen name="Forum" component={ForumScreen} options={{ title: 'Forum' }} />
         <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />

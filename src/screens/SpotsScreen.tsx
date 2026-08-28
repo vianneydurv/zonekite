@@ -1,16 +1,22 @@
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { SpotsStackParamList } from '../navigation/SpotsStackNavigator';
 import { colors, typography } from '../theme';
 import { spots } from '../data/spots';
 import SpotCard from '../components/SpotCard';
 
+type Props = NativeStackScreenProps<SpotsStackParamList, 'SpotsList'>;
+
 // Base de spots : liste consultable, fiche détaillée par spot
-export default function SpotsScreen() {
+export default function SpotsScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <FlatList
         data={spots}
         keyExtractor={(spot) => spot.id}
-        renderItem={({ item }) => <SpotCard spot={item} />}
+        renderItem={({ item }) => (
+          <SpotCard spot={item} onPress={() => navigation.navigate('SpotDetail', { spot: item })} />
+        )}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <>
