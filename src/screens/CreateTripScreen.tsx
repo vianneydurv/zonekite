@@ -41,6 +41,7 @@ export default function CreateTripScreen({ navigation }: Props) {
   const [heureRetour, setHeureRetour] = useState<string | null>(null);
   const [pickerMode, setPickerMode] = useState<'depart' | 'retour' | null>(null);
   const [adresseDepart, setAdresseDepart] = useState('');
+  const [vehicule, setVehicule] = useState('');
   const [places, setPlaces] = useState(1);
 
   const selectedSpot = spots.find((s) => s.id === spotId);
@@ -62,7 +63,9 @@ export default function CreateTripScreen({ navigation }: Props) {
       heureDepart,
       heureRetourEstimee: heureRetour ?? undefined,
       adresseDepart: adresseDepart.trim(),
+      vehicule: vehicule.trim() || undefined,
       placesDispo: places,
+      placesTotal: places,
     };
     await addTrip(trip);
     navigation.goBack();
@@ -125,6 +128,15 @@ export default function CreateTripScreen({ navigation }: Props) {
         value={adresseDepart}
         onChangeText={setAdresseDepart}
         placeholder="Ex : Paris 11e"
+        placeholderTextColor={colors.neutral.textSecondary}
+      />
+
+      <Text style={styles.fieldLabel}>VÉHICULE · OPTIONNEL</Text>
+      <TextInput
+        style={styles.input}
+        value={vehicule}
+        onChangeText={setVehicule}
+        placeholder="Ex : Berline · remorque possible"
         placeholderTextColor={colors.neutral.textSecondary}
       />
 
