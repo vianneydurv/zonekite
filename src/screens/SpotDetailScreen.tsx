@@ -1,4 +1,5 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SpotsStackParamList } from '../navigation/SpotsStackNavigator';
@@ -16,13 +17,40 @@ const TIDE_LABELS: Record<string, string> = {
   inconnue: 'Non documenté',
 };
 
+// Petite page HTML autonome : carte OpenStreetMap (Leaflet), sans clé API,
+// compatible Expo Go car affichée dans une WebView plutôt qu'une vraie MapView native.
+function mapHtml(lat: number, lon: number, label: string) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lon}], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.marker([${lat}, ${lon}]).addTo(map).bindPopup(${JSON.stringify(label)});
+  </script>
+</body>
+</html>`;
+}
+
 export default function SpotDetailScreen({ route }: Props) {
   const { spot } = route.params;
 
   return (
     <View style={styles.container}>
       <View style={styles.hero}>
-        <Text style={styles.heroPlaceholder}>Photo à venir</Text>
+        {spot.photoUrl ? (
+          <Image source={{ uri: spot.photoUrl }} style={styles.heroImage} resizeMode="cover" />
+        ) : (
+          <Text style={styles.heroPlaceholder}>Photo à venir</Text>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -38,18 +66,6 @@ export default function SpotDetailScreen({ route }: Props) {
         </View>
 
         <Text style={styles.title}>{spot.nom}</Text>
-
-        <View style={styles.ratingRow}>
-          {Array.from({ length: 5 }, (_, i) => (
-            <Ionicons key={i} name={i < 4 ? 'star' : 'star-outline'} size={18} color={colors.accent[500]} />
-          ))}
-          <Text
-            style={styles.ratingLink}
-            onPress={() => Alert.alert('Bientôt disponible', 'La notation communautaire arrive dans une prochaine étape.')}
-          >
-            Noter ce spot
-          </Text>
-        </View>
 
         <Text style={styles.description}>{spot.description}</Text>
 
@@ -98,15 +114,14 @@ export default function SpotDetailScreen({ route }: Props) {
         )}
 
         <Text style={styles.sectionTitle}>Localisation</Text>
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="map-outline" size={28} color={colors.ocean[300]} />
-          <Text style={styles.mapPlaceholderText}>Carte à venir</Text>
-          <Text style={styles.mapCoords}>
-            {spot.lat.toFixed(4)}, {spot.lon.toFixed(4)}
-          </Text>
+        <View style={styles.mapBox}>
+          <WebView
+            style={styles.map}
+            originWhitelist={['*']}
+            source={{ html: mapHtml(spot.lat, spot.lon, spot.nom) }}
+            scrollEnabled={false}
+          />
         </View>
-
-        <Text style={styles.source}>Source : {spot.source}</Text>
       </ScrollView>
     </View>
   );
@@ -120,6 +135,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroImage: { width: '100%', height: '100%' },
   heroPlaceholder: { ...typography.caption, color: colors.ocean[100] },
   content: { padding: 20, paddingBottom: 40 },
   badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
@@ -132,9 +148,7 @@ const styles = StyleSheet.create({
   badgeAccent: { backgroundColor: colors.accent[100] },
   badgeText: { ...typography.caption, color: colors.ocean[700], fontWeight: '600' },
   badgeAccentText: { color: colors.accent[700] },
-  title: { ...typography.h1, color: colors.ocean[900], marginBottom: 8 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 },
-  ratingLink: { ...typography.caption, color: colors.ocean[700], fontWeight: '600', marginLeft: 10 },
+  title: { ...typography.h1, color: colors.ocean[900], marginBottom: 12 },
   description: { ...typography.body, color: colors.neutral.textSecondary, marginBottom: 24 },
   sectionTitle: { ...typography.h3, color: colors.ocean[900], marginBottom: 12, marginTop: 4 },
   factRow: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'flex-start' },
@@ -144,17 +158,12 @@ const styles = StyleSheet.create({
   factDetail: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 2 },
   warningBox: { backgroundColor: colors.accent[100], borderRadius: 12, padding: 14, marginBottom: 8 },
   warningText: { ...typography.caption, color: colors.accent[700] },
-  mapPlaceholder: {
-    backgroundColor: colors.neutral.white,
+  mapBox: {
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.neutral.border,
-    height: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
+    height: 180,
+    overflow: 'hidden',
   },
-  mapPlaceholderText: { ...typography.caption, color: colors.neutral.textSecondary },
-  mapCoords: { ...typography.caption, color: colors.neutral.textSecondary },
-  source: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 24 },
+  map: { flex: 1 },
 });

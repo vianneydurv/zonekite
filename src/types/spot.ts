@@ -39,4 +39,6 @@ export interface Spot {
   // Restrictions saisonnières / horaires, réglementation locale, etc.
   reglementation?: string;
   source: string;
+  // URL d'une photo du spot (facultatif, à compléter au fil de l'eau)
+  photoUrl?: string;
 }
