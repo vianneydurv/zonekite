@@ -1,17 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
+import { getProfile } from '../lib/profileStorage';
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const MONTH_LABELS = [
@@ -59,6 +63,15 @@ export default function SearchScreen() {
   const [startHour, setStartHour] = useState(10);
   const [endHour, setEndHour] = useState(18);
   const [pickerMode, setPickerMode] = useState<'start' | 'end' | null>(null);
+  const [adresseDepart, setAdresseDepart] = useState('');
+  const [departDraft, setDepartDraft] = useState('');
+  const [showDepartEditor, setShowDepartEditor] = useState(false);
+
+  useEffect(() => {
+    getProfile().then((profile) => {
+      if (profile?.ville) setAdresseDepart(profile.ville);
+    });
+  }, []);
 
   const weeks = useMemo(() => {
     const dayOfWeek = today.getDay();
@@ -169,9 +182,14 @@ export default function SearchScreen() {
         <View style={styles.listItem}>
           <View>
             <Text style={styles.fieldLabel}>DÉPART · DEPUIS TON PROFIL</Text>
-            <Text style={styles.fieldValue}>Paris 11e</Text>
+            <Text style={styles.fieldValue}>{adresseDepart || '—'}</Text>
           </View>
-          <Pressable onPress={() => Alert.alert('Bientôt disponible', 'Le profil n’est pas encore construit.')}>
+          <Pressable
+            onPress={() => {
+              setDepartDraft(adresseDepart);
+              setShowDepartEditor(true);
+            }}
+          >
             <Text style={styles.linkText}>Changer</Text>
           </Pressable>
         </View>
@@ -231,6 +249,34 @@ export default function SearchScreen() {
             />
           </View>
         </Pressable>
+      </Modal>
+
+      <Modal visible={showDepartEditor} transparent animationType="fade">
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Point de départ</Text>
+            <TextInput
+              style={styles.departInput}
+              value={departDraft}
+              onChangeText={setDepartDraft}
+              placeholder="Ville ou adresse de départ"
+              placeholderTextColor={colors.neutral.textSecondary}
+              autoFocus
+            />
+            <Pressable
+              style={styles.departConfirmButton}
+              onPress={() => {
+                setAdresseDepart(departDraft.trim() || adresseDepart);
+                setShowDepartEditor(false);
+              }}
+            >
+              <Text style={styles.departConfirmText}>VALIDER</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -364,4 +410,21 @@ const styles = StyleSheet.create({
   modalTitle: { ...typography.h3, color: colors.ocean[900], marginBottom: 12 },
   modalOption: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.neutral.border },
   modalOptionText: { ...typography.body, color: colors.ocean[900], textAlign: 'center' },
+  departInput: {
+    backgroundColor: colors.neutral.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.neutral.border,
+    padding: 12,
+    ...typography.body,
+    color: colors.ocean[900],
+    marginBottom: 16,
+  },
+  departConfirmButton: {
+    backgroundColor: colors.accent[500],
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  departConfirmText: { ...typography.bodyBold, color: colors.neutral.white, letterSpacing: 0.5 },
 });

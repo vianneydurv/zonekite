@@ -25,7 +25,8 @@ export interface Profile {
   prenom: string;
   photoUri: string;
   niveau: NiveauKite;
-  ville?: string;
+  // Obligatoire : sert de point de départ par défaut pour la recherche de spot.
+  ville: string;
   materiel: Materiel;
 }
 

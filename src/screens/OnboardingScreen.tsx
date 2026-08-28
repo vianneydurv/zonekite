@@ -37,7 +37,8 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
   const [boards, setBoards] = useState<Board[]>([]);
   const [autres, setAutres] = useState<AutreMateriel[]>([]);
 
-  const canSubmit = prenom.trim().length > 0 && photoUri != null && niveau != null;
+  const canSubmit =
+    prenom.trim().length > 0 && photoUri != null && niveau != null && ville.trim().length > 0;
 
   async function pickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -65,7 +66,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
       prenom: prenom.trim(),
       photoUri,
       niveau,
-      ville: ville.trim() || undefined,
+      ville: ville.trim(),
       materiel: {
         ailes: ailes.filter((a) => a.marque.trim() || a.modele.trim() || a.taille.trim()),
         boards: boards.filter((b) => b.marque.trim() || b.modele.trim()),
@@ -130,7 +131,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
             ))}
           </View>
 
-          <Text style={styles.fieldLabel}>VILLE · OPTIONNEL</Text>
+          <Text style={styles.fieldLabel}>VILLE · POINT DE DÉPART *</Text>
           <TextInput
             style={styles.input}
             value={ville}
@@ -138,6 +139,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
             placeholder="Ta ville"
             placeholderTextColor={colors.neutral.textSecondary}
           />
+          <Text style={styles.hint}>Utilisée pour préremplir ton point de départ en recherche.</Text>
 
           <MaterielSection<Aile>
             title="AILES · OPTIONNEL"
@@ -228,6 +230,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.ocean[900],
   },
+  hint: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 6 },
   niveauRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   niveauChip: {
     borderRadius: 20,
