@@ -17,11 +17,42 @@ const TIDE_LABELS: Record<string, string> = {
   inconnue: 'Non documenté',
 };
 
-// Google Maps embarqué via son URL "embed" publique (pas de clé API nécessaire
-// pour l'affichage). Reste dans une WebView plutôt qu'une MapView native pour
-// rester compatible Expo Go (react-native-maps demanderait un build de dev).
-function googleMapsEmbedUrl(lat: number, lon: number) {
-  return `https://www.google.com/maps?q=${lat},${lon}&z=13&output=embed`;
+// Carte OpenStreetMap (Leaflet) : gratuite, illimitée, sans clé API ni compte à
+// créer (contrairement à Google Maps, qui exige une clé + une facturation
+// active). Style de tuiles "Voyager" (CartoDB) pour un rendu épuré. Reste en
+// WebView plutôt qu'une MapView native pour rester compatible Expo Go
+// (react-native-maps demanderait un build de développement).
+function mapHtml(lat: number, lon: number) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: ${colors.neutral.background}; }
+    .leaflet-control-attribution { font-size: 9px; }
+    .zonekite-marker {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: ${colors.accent[500]}; border: 3px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: true }).setView([${lat}, ${lon}], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map);
+    const icon = L.divIcon({ className: 'zonekite-marker', iconSize: [18, 18] });
+    L.marker([${lat}, ${lon}], { icon }).addTo(map);
+  </script>
+</body>
+</html>`;
 }
 
 export default function SpotDetailScreen({ route }: Props) {
@@ -101,7 +132,8 @@ export default function SpotDetailScreen({ route }: Props) {
         <View style={styles.mapBox}>
           <WebView
             style={styles.map}
-            source={{ uri: googleMapsEmbedUrl(spot.lat, spot.lon) }}
+            originWhitelist={['*']}
+            source={{ html: mapHtml(spot.lat, spot.lon) }}
           />
         </View>
       </ScrollView>
