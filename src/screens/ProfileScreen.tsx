@@ -1,116 +1,173 @@
-import { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
+import { getTrips } from '../lib/tripsStorage';
+import { getRequestedTripIds } from '../lib/rideRequests';
+import { getFavoriteIds } from '../lib/favorites';
+import { spots } from '../data/spots';
 import { NIVEAU_LABELS, type Profile } from '../types/profile';
+import type { Trajet } from '../types/trajet';
+
+interface NextRide {
+  trip: Trajet;
+  spotName: string;
+}
 
 // Profil utilisateur : prénom, photo, niveau, ville, matériel
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [carpoolCount, setCarpoolCount] = useState(0);
+  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [nextRide, setNextRide] = useState<NextRide | null>(null);
 
-  useEffect(() => {
-    getProfile().then(setProfile);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getProfile().then(setProfile);
+      getFavoriteIds().then((ids) => setFavoriteCount(ids.length));
+
+      Promise.all([getTrips(), getRequestedTripIds(), getProfile()]).then(
+        ([trips, requestedIds, p]) => {
+          const mine = trips.filter((t) => t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id));
+          setCarpoolCount(mine.length);
+
+          const upcoming = trips
+            .filter((t) => requestedIds.includes(t.id))
+            .sort((a, b) => a.date.localeCompare(b.date))[0];
+          if (upcoming) {
+            const spot = spots.find((s) => s.id === upcoming.spotId);
+            setNextRide({ trip: upcoming, spotName: spot?.nom ?? 'Spot inconnu' });
+          } else {
+            setNextRide(null);
+          }
+        }
+      );
+    }, [])
+  );
 
   if (!profile) return null;
 
-  // Garde-fou : un profil enregistré avant la restructuration du matériel
-  // (ailes/board/autres) n'a pas encore cette forme.
   const ailes = profile.materiel?.ailes ?? [];
   const boards = profile.materiel?.boards ?? [];
   const autres = profile.materiel?.autres ?? [];
-  const hasMateriel = ailes.length > 0 || boards.length > 0 || autres.length > 0;
+  const materielChips = [
+    ...ailes.map((a) => [a.marque, a.modele, a.taille].filter(Boolean).join(' ') || 'Aile'),
+    ...boards.map((b) => [b.marque, b.modele].filter(Boolean).join(' ') || 'Board'),
+    ...autres.map((a) => a.nom),
+  ].filter(Boolean);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <Image source={{ uri: profile.photoUri }} style={styles.photo} />
-        <View style={styles.headerText}>
-          <Text style={styles.prenom}>{profile.prenom}</Text>
-          {profile.ville && <Text style={styles.ville}>{profile.ville}</Text>}
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <Pressable
+          style={styles.settingsLink}
+          onPress={() => Alert.alert('Bientôt disponible', "L'édition du profil arrive dans une prochaine étape.")}
+        >
+          <Text style={styles.settingsLinkText}>RÉGLAGES</Text>
+        </Pressable>
+
+        <View style={styles.profileRow}>
+          <Image source={{ uri: profile.photoUri }} style={styles.photo} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.prenom}>{profile.prenom}</Text>
+            <Text style={styles.subline}>
+              {NIVEAU_LABELS[profile.niveau]}
+              {profile.ville ? ` · ${profile.ville}` : ''}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue}>—</Text>
+            <Text style={styles.statLabel}>SESSIONS</Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue}>{carpoolCount}</Text>
+            <Text style={styles.statLabel}>COVOITS</Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue}>{favoriteCount}</Text>
+            <Text style={styles.statLabel}>SPOTS SUIVIS</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{NIVEAU_LABELS[profile.niveau]}</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>Matériel</Text>
-      {!hasMateriel && <Text style={styles.emptyText}>Aucun matériel renseigné</Text>}
-
-      {ailes.length > 0 && (
-        <>
-          <Text style={styles.subLabel}>AILES</Text>
-          {ailes.map((item, i) => (
-            <View key={i} style={styles.materielRow}>
-              <Text style={styles.materielType}>{[item.marque, item.modele].filter(Boolean).join(' ') || 'Aile'}</Text>
-              {item.taille ? <Text style={styles.materielMeta}>{item.taille}</Text> : null}
+      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardEyebrow}>MON MATÉRIEL</Text>
+            <Pressable
+              onPress={() => Alert.alert('Bientôt disponible', "L'édition du matériel arrive dans une prochaine étape.")}
+            >
+              <Text style={styles.cardLink}>Modifier</Text>
+            </Pressable>
+          </View>
+          {materielChips.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun matériel renseigné</Text>
+          ) : (
+            <View style={styles.chipRow}>
+              {materielChips.map((label, i) => (
+                <View key={i} style={styles.chip}>
+                  <Text style={styles.chipText}>{label}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </>
-      )}
+          )}
+        </View>
 
-      {boards.length > 0 && (
-        <>
-          <Text style={styles.subLabel}>BOARD</Text>
-          {boards.map((item, i) => (
-            <View key={i} style={styles.materielRow}>
-              <Text style={styles.materielType}>{[item.marque, item.modele].filter(Boolean).join(' ') || 'Board'}</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardEyebrow}>PROCHAIN TRAJET</Text>
+          <View style={styles.nextRideRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.nextRideTitle}>
+                {nextRide ? `Passager chez ${nextRide.trip.conducteurPrenom}` : 'Aucun trajet réservé'}
+              </Text>
+              <Text style={styles.nextRideSub}>
+                {nextRide
+                  ? `${nextRide.spotName} · ${nextRide.trip.heureDepart} · ${nextRide.trip.adresseDepart}`
+                  : "Réserve une place depuis l'onglet Covoit"}
+              </Text>
             </View>
-          ))}
-        </>
-      )}
-
-      {autres.length > 0 && (
-        <>
-          <Text style={styles.subLabel}>AUTRES</Text>
-          {autres.map((item, i) => (
-            <View key={i} style={styles.materielRow}>
-              <Text style={styles.materielType}>{item.nom}</Text>
-            </View>
-          ))}
-        </>
-      )}
-    </ScrollView>
+            {nextRide && (
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>EN ATTENTE</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral.background },
-  content: { padding: 20, paddingTop: 60 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
+  safeArea: { flex: 1, backgroundColor: colors.neutral.background },
+  header: { backgroundColor: colors.navyBase, paddingHorizontal: 18, paddingTop: 8, paddingBottom: 20 },
+  settingsLink: { alignSelf: 'flex-end' },
+  settingsLinkText: { fontFamily: typography.body.fontFamily, fontSize: 12, color: colors.white(0.65), letterSpacing: 0.4 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 15, marginTop: 8 },
   photo: { width: 72, height: 72, borderRadius: 36 },
-  headerText: { flex: 1 },
-  prenom: { ...typography.h1, color: colors.ocean[900] },
-  ville: { ...typography.body, color: colors.neutral.textSecondary, marginTop: 2 },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.ocean[50],
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginBottom: 28,
-  },
-  badgeText: { ...typography.caption, color: colors.ocean[700], fontWeight: '600' },
-  sectionTitle: { ...typography.h3, color: colors.ocean[900], marginBottom: 8 },
+  prenom: { fontFamily: typography.h1.fontFamily, fontSize: 23, color: colors.neutral.white, letterSpacing: -0.4 },
+  subline: { ...typography.body, color: colors.white(0.6), marginTop: 5 },
+  statsRow: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  statTile: { flex: 1, backgroundColor: colors.white(0.1), borderRadius: 11, padding: 11 },
+  statValue: { fontFamily: typography.h1.fontFamily, fontSize: 19, color: colors.neutral.white },
+  statLabel: { fontFamily: typography.h3.fontFamily, fontSize: 9, color: colors.white(0.55), letterSpacing: 0.8, marginTop: 2 },
+  body: { flex: 1 },
+  bodyContent: { padding: 14, paddingTop: 14, gap: 10 },
+  card: { backgroundColor: colors.neutral.white, borderRadius: 14, padding: 14 },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 },
+  cardEyebrow: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
+  cardLink: { fontFamily: typography.h3.fontFamily, fontSize: 11.5, color: colors.blue },
   emptyText: { ...typography.body, color: colors.neutral.textSecondary },
-  subLabel: {
-    ...typography.caption,
-    color: colors.neutral.textSecondary,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  materielRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: colors.neutral.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.neutral.border,
-    padding: 14,
-    marginBottom: 8,
-  },
-  materielType: { ...typography.bodyBold, color: colors.ocean[900] },
-  materielMeta: { ...typography.body, color: colors.neutral.textSecondary },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  chip: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 9, backgroundColor: '#F0F4F7' },
+  chipText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.navyBase },
+  nextRideRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  nextRideTitle: { fontFamily: typography.h3.fontFamily, fontSize: 14.5, color: colors.navyBase },
+  nextRideSub: { ...typography.body, color: colors.navy(0.5), marginTop: 3 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FDF3E3' },
+  statusBadgeText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: '#9A6200' },
 });

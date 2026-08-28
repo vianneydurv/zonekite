@@ -6,6 +6,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
 import { getMockCondition } from '../lib/mockConditions';
+import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import type { Spot } from '../types/spot';
 
 interface Props {
@@ -55,6 +56,7 @@ export default function SpotDetailScreen({ route }: Props) {
   useFocusEffect(
     useCallback(() => {
       getTrips().then((trips) => setCarpoolCount(trips.filter((t) => t.spotId === spot.id).length));
+      getFavoriteIds().then((ids) => setFav(ids.includes(spot.id)));
     }, [spot.id])
   );
 
@@ -173,7 +175,7 @@ export default function SpotDetailScreen({ route }: Props) {
         </Pressable>
         <Pressable
           style={[styles.favButton, fav && styles.favButtonActive]}
-          onPress={() => setFav((f) => !f)}
+          onPress={() => toggleFavorite(spot.id).then((ids) => setFav(ids.includes(spot.id)))}
         >
           <Ionicons name={fav ? 'heart' : 'heart-outline'} size={20} color={fav ? colors.accent[500] : colors.blue} />
         </Pressable>
