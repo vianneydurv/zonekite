@@ -24,7 +24,7 @@ export default function ForumStackNavigator() {
     >
       <Stack.Screen name="ForumList" component={ForumListScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'Nouveau sujet' }} />
-      <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ title: 'Discussion' }} />
+      <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
