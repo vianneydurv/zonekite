@@ -16,7 +16,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
 import { saveProfile } from '../lib/profileStorage';
-import { NIVEAU_LABELS, type MaterielItem, type NiveauKite, type Profile } from '../types/profile';
+import MaterielSection from '../components/MaterielSection';
+import {
+  NIVEAU_LABELS,
+  type Aile,
+  type AutreMateriel,
+  type Board,
+  type NiveauKite,
+  type Profile,
+} from '../types/profile';
 
 const NIVEAUX: NiveauKite[] = ['debutant', 'intermediaire', 'confirme', 'expert'];
 
@@ -25,7 +33,9 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [niveau, setNiveau] = useState<NiveauKite | null>(null);
   const [ville, setVille] = useState('');
-  const [materiel, setMateriel] = useState<MaterielItem[]>([]);
+  const [ailes, setAiles] = useState<Aile[]>([]);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [autres, setAutres] = useState<AutreMateriel[]>([]);
 
   const canSubmit = prenom.trim().length > 0 && photoUri != null && niveau != null;
 
@@ -49,18 +59,6 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
     }
   }
 
-  function addMateriel() {
-    setMateriel((m) => [...m, { type: '', taille: '' }]);
-  }
-
-  function updateMateriel(index: number, field: keyof MaterielItem, value: string) {
-    setMateriel((m) => m.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
-  }
-
-  function removeMateriel(index: number) {
-    setMateriel((m) => m.filter((_, i) => i !== index));
-  }
-
   async function handleSubmit() {
     if (!canSubmit || !photoUri || !niveau) return;
     const profile: Profile = {
@@ -68,7 +66,11 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
       photoUri,
       niveau,
       ville: ville.trim() || undefined,
-      materiel: materiel.filter((m) => m.type.trim() || m.taille.trim()),
+      materiel: {
+        ailes: ailes.filter((a) => a.marque.trim() || a.modele.trim() || a.taille.trim()),
+        boards: boards.filter((b) => b.marque.trim() || b.modele.trim()),
+        autres: autres.filter((a) => a.nom.trim()),
+      },
     };
     await saveProfile(profile);
     onComplete(profile);
@@ -137,31 +139,39 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
             placeholderTextColor={colors.neutral.textSecondary}
           />
 
-          <Text style={styles.fieldLabel}>MATÉRIEL · OPTIONNEL</Text>
-          {materiel.map((item, index) => (
-            <View key={index} style={styles.materielRow}>
-              <TextInput
-                style={[styles.input, styles.materielInput]}
-                value={item.type}
-                onChangeText={(v) => updateMateriel(index, 'type', v)}
-                placeholder="Type (aile, board...)"
-                placeholderTextColor={colors.neutral.textSecondary}
-              />
-              <TextInput
-                style={[styles.input, styles.materielInput]}
-                value={item.taille}
-                onChangeText={(v) => updateMateriel(index, 'taille', v)}
-                placeholder="Taille"
-                placeholderTextColor={colors.neutral.textSecondary}
-              />
-              <Pressable onPress={() => removeMateriel(index)} style={styles.materielRemove}>
-                <Ionicons name="close-circle" size={22} color={colors.neutral.textSecondary} />
-              </Pressable>
-            </View>
-          ))}
-          <Pressable onPress={addMateriel}>
-            <Text style={styles.addMaterielLink}>+ Ajouter un équipement</Text>
-          </Pressable>
+          <MaterielSection<Aile>
+            title="AILES · OPTIONNEL"
+            addLabel="+ Ajouter une aile"
+            items={ailes}
+            onChange={setAiles}
+            emptyItem={{ marque: '', modele: '', taille: '' }}
+            fields={[
+              { key: 'marque', placeholder: 'Marque' },
+              { key: 'modele', placeholder: 'Modèle' },
+              { key: 'taille', placeholder: 'Taille' },
+            ]}
+          />
+
+          <MaterielSection<Board>
+            title="BOARD · OPTIONNEL"
+            addLabel="+ Ajouter une board"
+            items={boards}
+            onChange={setBoards}
+            emptyItem={{ marque: '', modele: '' }}
+            fields={[
+              { key: 'marque', placeholder: 'Marque' },
+              { key: 'modele', placeholder: 'Modèle' },
+            ]}
+          />
+
+          <MaterielSection<AutreMateriel>
+            title="AUTRES · OPTIONNEL"
+            addLabel="+ Ajouter un équipement"
+            items={autres}
+            onChange={setAutres}
+            emptyItem={{ nom: '' }}
+            fields={[{ key: 'nom', placeholder: 'Ex : harnais, casque...' }]}
+          />
 
           <Pressable
             style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
@@ -230,10 +240,6 @@ const styles = StyleSheet.create({
   niveauChipSelected: { backgroundColor: colors.ocean[900], borderColor: colors.ocean[900] },
   niveauChipText: { ...typography.caption, color: colors.ocean[900], fontWeight: '600' },
   niveauChipTextSelected: { color: colors.neutral.white },
-  materielRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 },
-  materielInput: { flex: 1 },
-  materielRemove: { padding: 4 },
-  addMaterielLink: { ...typography.body, color: colors.ocean[700], fontWeight: '600', marginTop: 4 },
   submitButton: {
     backgroundColor: colors.accent[500],
     borderRadius: 12,

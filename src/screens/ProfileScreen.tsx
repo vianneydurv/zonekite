@@ -14,6 +14,13 @@ export default function ProfileScreen() {
 
   if (!profile) return null;
 
+  // Garde-fou : un profil enregistré avant la restructuration du matériel
+  // (ailes/board/autres) n'a pas encore cette forme.
+  const ailes = profile.materiel?.ailes ?? [];
+  const boards = profile.materiel?.boards ?? [];
+  const autres = profile.materiel?.autres ?? [];
+  const hasMateriel = ailes.length > 0 || boards.length > 0 || autres.length > 0;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
@@ -29,15 +36,40 @@ export default function ProfileScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Matériel</Text>
-      {profile.materiel.length === 0 ? (
-        <Text style={styles.emptyText}>Aucun matériel renseigné</Text>
-      ) : (
-        profile.materiel.map((item, i) => (
-          <View key={i} style={styles.materielRow}>
-            <Text style={styles.materielType}>{item.type || 'Équipement'}</Text>
-            {item.taille ? <Text style={styles.materielTaille}>{item.taille}</Text> : null}
-          </View>
-        ))
+      {!hasMateriel && <Text style={styles.emptyText}>Aucun matériel renseigné</Text>}
+
+      {ailes.length > 0 && (
+        <>
+          <Text style={styles.subLabel}>AILES</Text>
+          {ailes.map((item, i) => (
+            <View key={i} style={styles.materielRow}>
+              <Text style={styles.materielType}>{[item.marque, item.modele].filter(Boolean).join(' ') || 'Aile'}</Text>
+              {item.taille ? <Text style={styles.materielMeta}>{item.taille}</Text> : null}
+            </View>
+          ))}
+        </>
+      )}
+
+      {boards.length > 0 && (
+        <>
+          <Text style={styles.subLabel}>BOARD</Text>
+          {boards.map((item, i) => (
+            <View key={i} style={styles.materielRow}>
+              <Text style={styles.materielType}>{[item.marque, item.modele].filter(Boolean).join(' ') || 'Board'}</Text>
+            </View>
+          ))}
+        </>
+      )}
+
+      {autres.length > 0 && (
+        <>
+          <Text style={styles.subLabel}>AUTRES</Text>
+          {autres.map((item, i) => (
+            <View key={i} style={styles.materielRow}>
+              <Text style={styles.materielType}>{item.nom}</Text>
+            </View>
+          ))}
+        </>
       )}
     </ScrollView>
   );
@@ -60,8 +92,15 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   badgeText: { ...typography.caption, color: colors.ocean[700], fontWeight: '600' },
-  sectionTitle: { ...typography.h3, color: colors.ocean[900], marginBottom: 12 },
+  sectionTitle: { ...typography.h3, color: colors.ocean[900], marginBottom: 8 },
   emptyText: { ...typography.body, color: colors.neutral.textSecondary },
+  subLabel: {
+    ...typography.caption,
+    color: colors.neutral.textSecondary,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+  },
   materielRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -73,5 +112,5 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   materielType: { ...typography.bodyBold, color: colors.ocean[900] },
-  materielTaille: { ...typography.body, color: colors.neutral.textSecondary },
+  materielMeta: { ...typography.body, color: colors.neutral.textSecondary },
 });
