@@ -1,17 +1,17 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import SpotsScreen from '../screens/SpotsScreen';
+import SearchScreen from '../screens/SearchScreen';
 import SpotDetailScreen from '../screens/SpotDetailScreen';
 import type { Spot } from '../types/spot';
 import { colors, typography } from '../theme';
 
-export type SpotsStackParamList = {
-  SpotsList: undefined;
+export type SearchStackParamList = {
+  SearchHome: undefined;
   SpotDetail: { spot: Spot };
 };
 
-const Stack = createNativeStackNavigator<SpotsStackParamList>();
+const Stack = createNativeStackNavigator<SearchStackParamList>();
 
-export default function SpotsStackNavigator() {
+export default function SearchStackNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
@@ -21,7 +21,7 @@ export default function SpotsStackNavigator() {
         headerBackTitle: '',
       }}
     >
-      <Stack.Screen name="SpotsList" component={SpotsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SearchHome" component={SearchScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="SpotDetail"
         component={SpotDetailScreen}

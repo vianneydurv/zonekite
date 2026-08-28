@@ -1,11 +1,16 @@
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { SpotsStackParamList } from '../navigation/SpotsStackNavigator';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
+import { getTrips } from '../lib/tripsStorage';
+import { getMockCondition } from '../lib/mockConditions';
+import type { Spot } from '../types/spot';
 
-type Props = NativeStackScreenProps<SpotsStackParamList, 'SpotDetail'>;
+interface Props {
+  route: { params: { spot: Spot } };
+}
 
 const TIDE_LABELS: Record<string, string> = {
   toutes: 'Navigable à toute marée',
@@ -17,11 +22,6 @@ const TIDE_LABELS: Record<string, string> = {
   inconnue: 'Non documenté',
 };
 
-// Carte OpenStreetMap (Leaflet) : gratuite, illimitée, sans clé API ni compte à
-// créer (contrairement à Google Maps, qui exige une clé + une facturation
-// active). Style de tuiles "Voyager" (CartoDB) pour un rendu épuré. Reste en
-// WebView plutôt qu'une MapView native pour rester compatible Expo Go
-// (react-native-maps demanderait un build de développement).
 function mapHtml(lat: number, lon: number) {
   return `
 <!DOCTYPE html>
@@ -30,13 +30,8 @@ function mapHtml(lat: number, lon: number) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; background: ${colors.neutral.background}; }
-    .leaflet-control-attribution { font-size: 9px; }
-    .zonekite-marker {
-      width: 18px; height: 18px; border-radius: 50%;
-      background: ${colors.accent[500]}; border: 3px solid #fff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
-    }
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .zonekite-marker { width: 18px; height: 18px; border-radius: 50%; background: #17A673; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
   </style>
 </head>
 <body>
@@ -44,12 +39,8 @@ function mapHtml(lat: number, lon: number) {
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const map = L.map('map', { zoomControl: true }).setView([${lat}, ${lon}], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
-    const icon = L.divIcon({ className: 'zonekite-marker', iconSize: [18, 18] });
-    L.marker([${lat}, ${lon}], { icon }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    L.marker([${lat}, ${lon}], { icon: L.divIcon({ className: 'zonekite-marker', iconSize: [18, 18] }) }).addTo(map);
   </script>
 </body>
 </html>`;
@@ -57,127 +48,207 @@ function mapHtml(lat: number, lon: number) {
 
 export default function SpotDetailScreen({ route }: Props) {
   const { spot } = route.params;
+  const navigation = useNavigation<any>();
+  const [fav, setFav] = useState(false);
+  const [carpoolCount, setCarpoolCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      getTrips().then((trips) => setCarpoolCount(trips.filter((t) => t.spotId === spot.id).length));
+    }, [spot.id])
+  );
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const condition = getMockCondition(spot, todayIso);
+
+  const windMin = spot.ventMinNoeuds ?? 12;
+  const windMax = spot.ventMaxNoeuds ?? 30;
+  const windPct = Math.max(0, Math.min(100, ((condition.windSpeed - windMin) / (windMax - windMin)) * 100));
 
   return (
     <View style={styles.container}>
       <View style={styles.hero}>
-        {spot.photoUrl ? (
-          <Image source={{ uri: spot.photoUrl }} style={styles.heroImage} resizeMode="cover" />
-        ) : (
-          <Text style={styles.heroPlaceholder}>Photo à venir</Text>
-        )}
+        <WebView style={styles.map} source={{ html: mapHtml(spot.lat, spot.lon) }} />
+      </View>
+
+      <View style={[styles.verdictBanner, { backgroundColor: condition.color }]}>
+        <Text style={styles.verdictText}>{condition.verdict}</Text>
+        <Text style={styles.verdictWindow}>{condition.window}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>{spot.nom}</Text>
+        <Text style={styles.location}>{spot.region}</Text>
+
         <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{spot.region}</Text>
-          </View>
           {spot.niveauIndicatif && (
-            <View style={[styles.badge, styles.badgeAccent]}>
-              <Text style={[styles.badgeText, styles.badgeAccentText]}>{spot.niveauIndicatif}</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{spot.niveauIndicatif.toUpperCase()}</Text>
+            </View>
+          )}
+          {spot.contrainteMaree !== 'toutes' && (
+            <View style={[styles.badge, styles.badgeNeutral]}>
+              <Text style={[styles.badgeText, styles.badgeNeutralText]}>MARÉE SENSIBLE</Text>
             </View>
           )}
         </View>
 
-        <Text style={styles.title}>{spot.nom}</Text>
-
-        <Text style={styles.description}>{spot.description}</Text>
-
-        <Text style={styles.sectionTitle}>Conditions idéales</Text>
-
-        <View style={styles.factRow}>
-          <Ionicons name="flag-outline" size={18} color={colors.ocean[700]} />
-          <View style={styles.factTextWrap}>
-            <Text style={styles.factLabel}>Force du vent</Text>
-            <Text style={styles.factValue}>
-              {spot.ventMinNoeuds != null && spot.ventMaxNoeuds != null
-                ? `${spot.ventMinNoeuds} – ${spot.ventMaxNoeuds} nœuds`
-                : 'Non documenté'}
-            </Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardEyebrow}>MAINTENANT vs IDÉAL</Text>
+            <Text style={styles.cardEyebrowValue}>démo</Text>
           </View>
+
+          <View style={styles.barRow}>
+            <View style={styles.barLabelRow}>
+              <Text style={styles.barLabel}>Force du vent</Text>
+              <Text style={styles.barValue}>{condition.windSpeed} nds</Text>
+            </View>
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barIdealZone,
+                  { left: '20%', width: '60%' },
+                ]}
+              />
+              <View style={[styles.barMarker, { left: `${windPct}%` }]} />
+            </View>
+          </View>
+
+          <View style={styles.barRow}>
+            <View style={styles.barLabelRow}>
+              <Text style={styles.barLabel}>Direction</Text>
+              <Text style={styles.barValue}>
+                {condition.windDir}{' '}
+                <Text style={styles.barValueMuted}>
+                  / idéal {spot.directionsFavorables?.join('–') ?? '—'}
+                </Text>
+              </Text>
+            </View>
+            <View style={styles.barTrack}>
+              <View style={[styles.barIdealZone, { left: '35%', width: '40%' }]} />
+              <View style={[styles.barMarker, { left: '50%' }]} />
+            </View>
+          </View>
+
+          <View style={styles.barRow}>
+            <View style={styles.barLabelRow}>
+              <Text style={styles.barLabel}>Marée</Text>
+              <Text style={styles.barValue}>{condition.tideLabel}</Text>
+            </View>
+            <View style={styles.barTrack}>
+              <View style={[styles.barIdealZone, styles.barIdealZoneTide, { left: '20%', width: '46%' }]} />
+              <View style={[styles.barMarker, styles.barMarkerTide, { left: '34%' }]} />
+            </View>
+          </View>
+
+          <Text style={styles.cardFootnote}>
+            {TIDE_LABELS[spot.contrainteMaree]}
+            {spot.contrainteMareeDetail ? ` — ${spot.contrainteMareeDetail}` : ''}
+          </Text>
         </View>
 
-        <View style={styles.factRow}>
-          <Ionicons name="compass-outline" size={18} color={colors.ocean[700]} />
-          <View style={styles.factTextWrap}>
-            <Text style={styles.factLabel}>Directions favorables</Text>
-            <Text style={styles.factValue}>
-              {spot.directionsFavorables ? spot.directionsFavorables.join(' · ') : 'Non documenté'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.factRow}>
-          <Ionicons name="water-outline" size={18} color={colors.ocean[700]} />
-          <View style={styles.factTextWrap}>
-            <Text style={styles.factLabel}>Marée</Text>
-            <Text style={styles.factValue}>{TIDE_LABELS[spot.contrainteMaree]}</Text>
-            {spot.contrainteMareeDetail && (
-              <Text style={styles.factDetail}>{spot.contrainteMareeDetail}</Text>
-            )}
-          </View>
+        <View style={styles.card}>
+          <Text style={styles.cardEyebrow}>LE SPOT</Text>
+          <Text style={styles.description}>{spot.description}</Text>
         </View>
 
         {spot.reglementation && (
-          <>
-            <Text style={styles.sectionTitle}>Réglementation</Text>
-            <View style={styles.warningBox}>
-              <Text style={styles.warningText}>{spot.reglementation}</Text>
-            </View>
-          </>
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>{spot.reglementation}</Text>
+          </View>
         )}
-
-        <Text style={styles.sectionTitle}>Localisation</Text>
-        <View style={styles.mapBox}>
-          <WebView
-            style={styles.map}
-            originWhitelist={['*']}
-            source={{ html: mapHtml(spot.lat, spot.lon) }}
-          />
-        </View>
       </ScrollView>
+
+      <View style={styles.footer}>
+        <Pressable
+          style={styles.footerCta}
+          onPress={() => navigation.getParent()?.navigate('Carpool')}
+        >
+          <Text style={styles.footerCtaText}>
+            {carpoolCount > 0
+              ? `${carpoolCount} COVOIT${carpoolCount > 1 ? 'S' : ''} POUR CE SPOT`
+              : 'PROPOSER UN COVOIT'}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.favButton, fav && styles.favButtonActive]}
+          onPress={() => setFav((f) => !f)}
+        >
+          <Ionicons name={fav ? 'heart' : 'heart-outline'} size={20} color={fav ? colors.accent[500] : colors.blue} />
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral.background },
-  hero: {
-    height: 160,
-    backgroundColor: colors.ocean[700],
+  hero: { height: 200 },
+  map: { flex: 1 },
+  verdictBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  verdictText: { ...typography.caption, color: colors.neutral.white, letterSpacing: 1.1, fontFamily: typography.h3.fontFamily },
+  verdictWindow: { ...typography.bodyBold, color: colors.neutral.white },
+  content: { padding: 15, paddingBottom: 20 },
+  title: { ...typography.h1, color: colors.navyBase, letterSpacing: -0.5 },
+  location: { ...typography.body, color: colors.navy(0.5), marginTop: 4 },
+  badgeRow: { flexDirection: 'row', gap: 6, marginTop: 11, flexWrap: 'wrap' },
+  badge: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#E7F1F7' },
+  badgeText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.blue, letterSpacing: 0.5 },
+  badgeNeutral: { backgroundColor: colors.neutral.white },
+  badgeNeutralText: { color: colors.navy(0.6) },
+  card: {
+    backgroundColor: colors.neutral.white,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 13,
+  },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 },
+  cardEyebrow: { ...typography.caption, color: colors.navy(0.55), letterSpacing: 1 },
+  cardEyebrowValue: { ...typography.caption, color: colors.navy(0.3) },
+  barRow: { marginBottom: 12 },
+  barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  barLabel: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
+  barValue: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
+  barValueMuted: { color: colors.navy(0.4), fontFamily: typography.body.fontFamily },
+  barTrack: { height: 8, borderRadius: 4, backgroundColor: '#EDF1F4', marginTop: 7, position: 'relative' },
+  barIdealZone: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#CDEBDD', borderRadius: 4 },
+  barIdealZoneTide: { backgroundColor: '#FBE7C4' },
+  barMarker: { position: 'absolute', top: -3, width: 5, height: 14, borderRadius: 3, backgroundColor: '#17A673' },
+  barMarkerTide: { backgroundColor: '#F0A020' },
+  cardFootnote: { ...typography.body, color: colors.navy(0.65), marginTop: 4, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.navy(0.07) },
+  description: { ...typography.body, color: colors.navy(0.8), marginTop: 8, lineHeight: 19 },
+  warningBox: { backgroundColor: colors.accent[100], borderRadius: 12, padding: 14, marginTop: 13 },
+  warningText: { ...typography.caption, color: colors.accent[700] },
+  footer: {
+    flexDirection: 'row',
+    gap: 9,
+    padding: 12,
+    paddingBottom: 20,
+    backgroundColor: colors.neutral.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.navy(0.09),
+  },
+  footerCta: {
+    flex: 1,
+    backgroundColor: colors.accent[500],
+    borderRadius: 13,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  footerCtaText: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.neutral.white, letterSpacing: 0.3 },
+  favButton: {
+    width: 56,
+    borderRadius: 13,
+    backgroundColor: '#F0F4F7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroImage: { width: '100%', height: '100%' },
-  heroPlaceholder: { ...typography.caption, color: colors.ocean[100] },
-  content: { padding: 20, paddingBottom: 40 },
-  badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  badge: {
-    backgroundColor: colors.ocean[50],
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeAccent: { backgroundColor: colors.accent[100] },
-  badgeText: { ...typography.caption, color: colors.ocean[700], fontWeight: '600' },
-  badgeAccentText: { color: colors.accent[700] },
-  title: { ...typography.h1, color: colors.ocean[900], marginBottom: 12 },
-  description: { ...typography.body, color: colors.neutral.textSecondary, marginBottom: 24 },
-  sectionTitle: { ...typography.h3, color: colors.ocean[900], marginBottom: 12, marginTop: 4 },
-  factRow: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'flex-start' },
-  factTextWrap: { flex: 1 },
-  factLabel: { ...typography.caption, color: colors.neutral.textSecondary, fontWeight: '600' },
-  factValue: { ...typography.bodyBold, color: colors.ocean[900], marginTop: 2 },
-  factDetail: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 2 },
-  warningBox: { backgroundColor: colors.accent[100], borderRadius: 12, padding: 14, marginBottom: 8 },
-  warningText: { ...typography.caption, color: colors.accent[700] },
-  mapBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.neutral.border,
-    height: 240,
-    overflow: 'hidden',
-  },
-  map: { flex: 1 },
+  favButtonActive: { backgroundColor: colors.accent[100] },
 });

@@ -27,7 +27,8 @@
         {
           "photosPermission": "ZoneKite a besoin d'accéder à vos photos pour choisir votre photo de profil."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
