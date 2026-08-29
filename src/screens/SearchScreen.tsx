@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Alert,
   FlatList,
@@ -70,11 +70,12 @@ const VERDICT_ORDER: Record<string, number> = {
   'NON NAVIGABLE': 2,
 };
 
+const RESULT_SPOT_ZOOM = 12;
+
 function resultsMapHtml(markers: { id: string; nom: string; lat: number; lon: number }[]) {
-  const points = markers.map((m) => [m.lat, m.lon]);
-  const fitBounds =
-    points.length > 0
-      ? `map.fitBounds(${JSON.stringify(points)}, { padding: [24, 24] });`
+  const initialView =
+    markers.length > 0
+      ? `map.setView([${markers[0].lat}, ${markers[0].lon}], ${RESULT_SPOT_ZOOM});`
       : `map.setView([46.6, -1.5], 5);`;
   const markerCalls = markers
     .map(
@@ -103,7 +104,10 @@ function resultsMapHtml(markers: { id: string; nom: string; lat: number; lon: nu
     const map = L.map('map', { zoomControl: false, attributionControl: false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     ${markerCalls}
-    ${fitBounds}
+    ${initialView}
+    window.zonekiteFlyTo = function (lat, lon) {
+      map.flyTo([lat, lon], ${RESULT_SPOT_ZOOM}, { duration: 0.6 });
+    };
   </script>
 </body>
 </html>`;
@@ -157,6 +161,23 @@ export default function SearchScreen() {
 
   const [results, setResults] = useState<{ spot: Spot; condition: SpotCondition }[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
+  const mapRef = useRef<WebView>(null);
+
+  const flyToSpot = useCallback((spot: Spot) => {
+    mapRef.current?.injectJavaScript(
+      `window.zonekiteFlyTo && window.zonekiteFlyTo(${spot.lat}, ${spot.lon}); true;`
+    );
+  }, []);
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<{ item: { spot: Spot } }> }) => {
+      const top = viewableItems[0]?.item.spot;
+      if (top) flyToSpot(top);
+    }
+  ).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
+
+  const mapHtml = useMemo(() => resultsMapHtml(results.map((r) => r.spot)), [results]);
 
   useEffect(() => {
     if (!searched) return;
@@ -327,8 +348,9 @@ export default function SearchScreen() {
         <View style={styles.resultsContainer}>
           <View style={styles.mapContainer}>
             <WebView
+              ref={mapRef}
               style={styles.map}
-              source={{ html: resultsMapHtml(results.map((r) => r.spot)) }}
+              source={{ html: mapHtml }}
               onMessage={(e: WebViewMessageEvent) => {
                 const spot = results.find((r) => r.spot.id === e.nativeEvent.data)?.spot;
                 if (spot) navigation.navigate('SpotDetail', { spot });
@@ -339,6 +361,8 @@ export default function SearchScreen() {
           <FlatList
             data={results}
             keyExtractor={({ spot }) => spot.id}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
             contentContainerStyle={styles.resultsList}
             ListHeaderComponent={
               <View style={styles.resultsHeaderRow}>
