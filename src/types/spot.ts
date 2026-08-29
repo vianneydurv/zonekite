@@ -27,6 +27,11 @@ export interface Spot {
   region: Region;
   lat: number;
   lon: number;
+  // Ancre pour l'approximation de marée M2 (src/lib/tide.ts) : heure ISO
+  // d'une pleine mer connue au port de référence le plus proche. Approximatif
+  // (mutualisé entre spots voisins), à recaler périodiquement sur une source
+  // officielle. Absent = pas de calcul de marée possible pour ce spot.
+  mareeRef?: string;
   description: string;
   ventMinNoeuds: number | null;
   ventMaxNoeuds: number | null;
