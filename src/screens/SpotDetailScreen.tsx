@@ -7,6 +7,7 @@ import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
 import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
+import { averageOf, getMyRating, getSpotRatings, rateSpot } from '../lib/ratings';
 import type { Spot } from '../types/spot';
 
 interface Props {
@@ -53,13 +54,26 @@ export default function SpotDetailScreen({ route }: Props) {
   const [fav, setFav] = useState(false);
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [condition, setCondition] = useState<SpotCondition | null>(null);
+  const [ratingAverage, setRatingAverage] = useState({ average: 0, count: 0 });
+  const [myRating, setMyRating] = useState(0);
+
+  const refreshRatings = useCallback(() => {
+    getSpotRatings(spot.id).then((ratings) => setRatingAverage(averageOf(ratings)));
+    getMyRating(spot.id).then((r) => setMyRating(r?.value ?? 0));
+  }, [spot.id]);
 
   useFocusEffect(
     useCallback(() => {
       getTrips().then((trips) => setCarpoolCount(trips.filter((t) => t.spotId === spot.id).length));
       getFavoriteIds().then((ids) => setFav(ids.includes(spot.id)));
-    }, [spot.id])
+      refreshRatings();
+    }, [spot.id, refreshRatings])
   );
+
+  function handleRate(value: number) {
+    setMyRating(value);
+    rateSpot(spot.id, value).then(refreshRatings);
+  }
 
   useEffect(() => {
     getSpotCondition(spot, localDateIso(new Date())).then(setCondition);
@@ -172,6 +186,31 @@ export default function SpotDetailScreen({ route }: Props) {
           <Text style={styles.description}>{spot.description}</Text>
         </View>
 
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardEyebrow}>AVIS DE LA COMMUNAUTÉ</Text>
+            <Text style={styles.cardEyebrowValue}>
+              {ratingAverage.count > 0
+                ? `${ratingAverage.average.toFixed(1)} · ${ratingAverage.count} avis`
+                : 'Pas encore noté'}
+            </Text>
+          </View>
+          <View style={styles.starRow}>
+            {[1, 2, 3, 4, 5].map((value) => (
+              <Pressable key={value} onPress={() => handleRate(value)} hitSlop={6}>
+                <Ionicons
+                  name={value <= myRating ? 'star' : 'star-outline'}
+                  size={28}
+                  color={colors.accentOrange}
+                />
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.cardFootnote}>
+            {myRating > 0 ? 'Ta note pour ce spot — appuie pour la changer.' : 'Note ce spot en appuyant sur les étoiles.'}
+          </Text>
+        </View>
+
         {spot.reglementation && (
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>{spot.reglementation}</Text>
@@ -243,6 +282,7 @@ const styles = StyleSheet.create({
   barIdealZoneTide: { backgroundColor: '#FBE7C4' },
   barMarker: { position: 'absolute', top: -3, width: 5, height: 14, borderRadius: 3, backgroundColor: '#17A673' },
   barMarkerTide: { backgroundColor: '#F0A020' },
+  starRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   cardFootnote: { ...typography.body, color: colors.navy(0.65), marginTop: 4, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.navy(0.07) },
   description: { ...typography.body, color: colors.navy(0.8), marginTop: 8, lineHeight: 19 },
   warningBox: { backgroundColor: colors.accent[100], borderRadius: 12, padding: 14, marginTop: 13 },

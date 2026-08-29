@@ -21,5 +21,12 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
     }
+
+    // Notation des spots : une note par utilisateur et par spot (id du doc =
+    // uid), visible par tous, modifiable seulement par son auteur.
+    match /spotRatings/{spotId}/entries/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }
