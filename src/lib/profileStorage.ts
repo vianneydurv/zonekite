@@ -16,5 +16,5 @@ export async function getProfile(): Promise<Profile | null> {
 export async function saveProfile(profile: Profile): Promise<void> {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Aucun utilisateur connecté');
-  await setDoc(profileDoc(uid), profile);
+  await setDoc(profileDoc(uid), profile, { merge: true });
 }

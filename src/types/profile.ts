@@ -28,6 +28,10 @@ export interface Profile {
   // Obligatoire : sert de point de départ par défaut pour la recherche de spot.
   ville: string;
   materiel: Materiel;
+  // Gérés séparément par favorites.ts / rideRequests.ts (Firestore
+  // arrayUnion/arrayRemove), pas par saveProfile.
+  favoriteSpotIds?: string[];
+  requestedTripIds?: string[];
 }
 
 export const NIVEAU_LABELS: Record<NiveauKite, string> = {

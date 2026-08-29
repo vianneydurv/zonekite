@@ -1,30 +1,22 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { collection, doc, getDoc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 import type { ForumComment, ForumPost } from '../types/forum';
-import { demoPosts } from '../data/demoPosts';
 
-// Stockage local en attendant Firebase (étape 9+) : les sujets créés ici ne
-// sont visibles que sur cet appareil, pas partagés avec les autres membres.
-const POSTS_KEY = '@zonekite/forum-posts';
+const postsCollection = collection(db, 'forumPosts');
 
 export async function getPosts(): Promise<ForumPost[]> {
-  const raw = await AsyncStorage.getItem(POSTS_KEY);
-  if (!raw) {
-    await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(demoPosts));
-    return demoPosts;
-  }
-  return JSON.parse(raw);
+  const snap = await getDocs(query(postsCollection, orderBy('date', 'desc')));
+  return snap.docs.map((d) => d.data() as ForumPost);
 }
 
 export async function addPost(post: ForumPost): Promise<void> {
-  const posts = await getPosts();
-  await AsyncStorage.setItem(POSTS_KEY, JSON.stringify([post, ...posts]));
+  await setDoc(doc(postsCollection, post.id), post);
 }
 
 export async function addComment(postId: string, comment: ForumComment): Promise<ForumPost[]> {
-  const posts = await getPosts();
-  const updated = posts.map((p) =>
-    p.id === postId ? { ...p, commentaires: [...p.commentaires, comment] } : p
-  );
-  await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(updated));
-  return updated;
+  const ref = doc(postsCollection, postId);
+  const snap = await getDoc(ref);
+  const post = snap.data() as ForumPost;
+  await setDoc(ref, { ...post, commentaires: [...post.commentaires, comment] });
+  return getPosts();
 }

@@ -1,18 +1,17 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
 
-// Suivi local de "j'ai demandé une place sur ce trajet". Tant que Firebase
-// n'est pas branché (étape 9+), ça ne notifie pas réellement le conducteur —
-// ça mémorise juste ta demande sur cet appareil.
-const REQUESTS_KEY = '@zonekite/ride-requests';
+function profileRef() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Aucun utilisateur connecté');
+  return doc(db, 'profiles', uid);
+}
 
 export async function getRequestedTripIds(): Promise<string[]> {
-  const raw = await AsyncStorage.getItem(REQUESTS_KEY);
-  return raw ? JSON.parse(raw) : [];
+  const snap = await getDoc(profileRef());
+  return (snap.data()?.requestedTripIds as string[] | undefined) ?? [];
 }
 
 export async function requestSeat(tripId: string): Promise<void> {
-  const ids = await getRequestedTripIds();
-  if (!ids.includes(tripId)) {
-    await AsyncStorage.setItem(REQUESTS_KEY, JSON.stringify([...ids, tripId]));
-  }
+  await updateDoc(profileRef(), { requestedTripIds: arrayUnion(tripId) });
 }

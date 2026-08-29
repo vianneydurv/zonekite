@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Profil utilisateur : lisible/modifiable uniquement par son propriétaire.
+    match /profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Trajets de covoiturage : visibles par tous les membres connectés,
+    // création libre, pas de modification/suppression pour l'instant (pas
+    // d'UI d'édition dans l'app).
+    match /trips/{tripId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+    }
+
+    // Sujets de forum : visibles par tous les membres connectés, création
+    // libre, mise à jour autorisée (ajout de commentaires — pas de contrôle
+    // de propriété, cohérent avec le fonctionnement actuel de l'app).
+    match /forumPosts/{postId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+    }
+  }
+}

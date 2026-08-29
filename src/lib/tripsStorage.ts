@@ -1,21 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { collection, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 import type { Trajet } from '../types/trajet';
-import { demoTrips } from '../data/demoTrips';
 
-// Stockage local en attendant Firebase (étape 9+) : les trajets créés ici ne
-// sont visibles que sur cet appareil, pas partagés avec les autres membres.
-const TRIPS_KEY = '@zonekite/trips';
+const tripsCollection = collection(db, 'trips');
 
 export async function getTrips(): Promise<Trajet[]> {
-  const raw = await AsyncStorage.getItem(TRIPS_KEY);
-  if (!raw) {
-    await AsyncStorage.setItem(TRIPS_KEY, JSON.stringify(demoTrips));
-    return demoTrips;
-  }
-  return JSON.parse(raw);
+  const snap = await getDocs(query(tripsCollection, orderBy('date')));
+  return snap.docs.map((d) => d.data() as Trajet);
 }
 
 export async function addTrip(trip: Trajet): Promise<void> {
-  const trips = await getTrips();
-  await AsyncStorage.setItem(TRIPS_KEY, JSON.stringify([trip, ...trips]));
+  await setDoc(doc(tripsCollection, trip.id), trip);
 }

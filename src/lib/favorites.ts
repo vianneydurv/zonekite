@@ -1,16 +1,21 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
 
-// Spots suivis (favoris), stockés localement en attendant Firebase.
-const FAVORITES_KEY = '@zonekite/favorite-spots';
+function profileRef() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Aucun utilisateur connecté');
+  return doc(db, 'profiles', uid);
+}
 
 export async function getFavoriteIds(): Promise<string[]> {
-  const raw = await AsyncStorage.getItem(FAVORITES_KEY);
-  return raw ? JSON.parse(raw) : [];
+  const snap = await getDoc(profileRef());
+  return (snap.data()?.favoriteSpotIds as string[] | undefined) ?? [];
 }
 
 export async function toggleFavorite(spotId: string): Promise<string[]> {
-  const ids = await getFavoriteIds();
-  const next = ids.includes(spotId) ? ids.filter((id) => id !== spotId) : [...ids, spotId];
-  await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-  return next;
+  const ref = profileRef();
+  const current = await getFavoriteIds();
+  const isFav = current.includes(spotId);
+  await updateDoc(ref, { favoriteSpotIds: isFav ? arrayRemove(spotId) : arrayUnion(spotId) });
+  return isFav ? current.filter((id) => id !== spotId) : [...current, spotId];
 }
