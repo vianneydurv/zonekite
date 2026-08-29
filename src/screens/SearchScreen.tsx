@@ -20,8 +20,12 @@ import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
 import { getTrips } from '../lib/tripsStorage';
 import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
+import { distanceKm, geocodeAddress, type Coords } from '../lib/geocoding';
 import { spots } from '../data/spots';
 import type { Spot } from '../types/spot';
+
+const DISTANCE_STEP_KM = 25;
+const DEFAULT_DISTANCE_KM = 150;
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const MONTH_LABELS = [
@@ -135,6 +139,40 @@ export default function SearchScreen() {
     });
   }, []);
 
+  const [departCoords, setDepartCoords] = useState<Coords | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [distanceMaxKm, setDistanceMaxKm] = useState(DEFAULT_DISTANCE_KM);
+
+  useEffect(() => {
+    if (!adresseDepart.trim()) {
+      setDepartCoords(null);
+      return;
+    }
+    let cancelled = false;
+    setGeocoding(true);
+    geocodeAddress(adresseDepart).then((coords) => {
+      if (cancelled) return;
+      setDepartCoords(coords);
+      setGeocoding(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [adresseDepart]);
+
+  const spotDistances = useMemo(() => {
+    if (!departCoords) return null;
+    return spots
+      .map((spot) => ({ spot, km: distanceKm(departCoords, spot) }))
+      .sort((a, b) => a.km - b.km);
+  }, [departCoords]);
+
+  const minDistanceKm = spotDistances ? Math.ceil(spotDistances[0].km) : 0;
+
+  useEffect(() => {
+    setDistanceMaxKm((prev) => Math.max(prev, minDistanceKm));
+  }, [minDistanceKm]);
+
   useFocusEffect(
     useCallback(() => {
       getTrips().then((trips) => {
@@ -181,20 +219,23 @@ export default function SearchScreen() {
 
   useEffect(() => {
     if (!searched) return;
+    const candidateSpots = spotDistances
+      ? spotDistances.filter((d) => d.km <= distanceMaxKm).map((d) => d.spot)
+      : spots;
     let cancelled = false;
     setLoadingResults(true);
-    Promise.all(spots.map((spot) => getSpotCondition(spot, dateIso).then((condition) => ({ spot, condition })))).then(
-      (list) => {
-        if (cancelled) return;
-        list.sort((a, b) => VERDICT_ORDER[a.condition.verdict] - VERDICT_ORDER[b.condition.verdict]);
-        setResults(list);
-        setLoadingResults(false);
-      }
-    );
+    Promise.all(
+      candidateSpots.map((spot) => getSpotCondition(spot, dateIso).then((condition) => ({ spot, condition })))
+    ).then((list) => {
+      if (cancelled) return;
+      list.sort((a, b) => VERDICT_ORDER[a.condition.verdict] - VERDICT_ORDER[b.condition.verdict]);
+      setResults(list);
+      setLoadingResults(false);
+    });
     return () => {
       cancelled = true;
     };
-  }, [dateIso, searched]);
+  }, [dateIso, searched, distanceMaxKm, spotDistances]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -325,16 +366,34 @@ export default function SearchScreen() {
             </Pressable>
           </View>
 
-          <Pressable
-            style={styles.listItem}
-            onPress={() => Alert.alert('Bientôt disponible', 'Le filtre de distance arrive dans une prochaine étape.')}
-          >
+          <View style={styles.listItem}>
             <View>
-              <Text style={styles.fieldLabel}>DISTANCE MAX · OPTIONNEL</Text>
-              <Text style={styles.fieldValuePlaceholder}>Sans limite</Text>
+              <Text style={styles.fieldLabel}>DISTANCE MAX</Text>
+              {geocoding && !departCoords ? (
+                <Text style={styles.fieldValuePlaceholder}>Localisation du départ…</Text>
+              ) : (
+                <Text style={styles.fieldValue}>{distanceMaxKm} km</Text>
+              )}
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.neutral.textSecondary} />
-          </Pressable>
+            <View style={styles.stepperRow}>
+              <Pressable
+                style={[styles.stepperButton, distanceMaxKm <= minDistanceKm && styles.stepperButtonDisabled]}
+                disabled={distanceMaxKm <= minDistanceKm}
+                onPress={() => setDistanceMaxKm((d) => Math.max(minDistanceKm, d - DISTANCE_STEP_KM))}
+              >
+                <Ionicons name="remove" size={18} color={colors.ocean[900]} />
+              </Pressable>
+              <Pressable
+                style={styles.stepperButton}
+                onPress={() => setDistanceMaxKm((d) => d + DISTANCE_STEP_KM)}
+              >
+                <Ionicons name="add" size={18} color={colors.ocean[900]} />
+              </Pressable>
+            </View>
+          </View>
+          {spotDistances && (
+            <Text style={styles.hint}>Spot le plus proche : {minDistanceKm} km</Text>
+          )}
 
           <Pressable style={[styles.searchButton, isOutOfRange && styles.searchButtonDisabled]} disabled={isOutOfRange} onPress={() => setSearched(true)}>
             <Text style={styles.searchButtonText}>CHERCHER</Text>
@@ -631,6 +690,19 @@ const styles = StyleSheet.create({
   },
   linkText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.blue },
   fieldValuePlaceholder: { ...typography.body, color: colors.neutral.textSecondary, marginTop: 4 },
+  stepperRow: { flexDirection: 'row', gap: 8 },
+  stepperButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.neutral.background,
+    borderWidth: 1,
+    borderColor: colors.neutral.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperButtonDisabled: { opacity: 0.4 },
+  hint: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 6, marginLeft: 2 },
   savedSearchesLink: { ...typography.body, color: colors.blue, textAlign: 'center', marginTop: 16, fontFamily: typography.h3.fontFamily },
   searchButton: {
     backgroundColor: colors.accent[500],

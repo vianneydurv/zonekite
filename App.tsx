@@ -43,12 +43,22 @@ export default function App() {
     if (user) getProfile().then(setProfile);
   }, [user]);
 
+  // Laisse la photo de l'écran de chargement visible au moins 3 secondes,
+  // même si l'auth/le profil se résolvent plus vite.
+  const [minDelayElapsed, setMinDelayElapsed] = useState(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => setMinDelayElapsed(true), 3000);
+    return () => clearTimeout(timeout);
+  }, []);
+
   if (!fontsLoaded) return null;
+
+  const stillLoading = user === undefined || (user && profile === undefined) || !minDelayElapsed;
 
   return (
     <SafeAreaProvider>
       <StatusBar style={profile ? 'dark' : 'light'} />
-      {user === undefined || (user && profile === undefined) ? (
+      {stillLoading ? (
         <LoadingScreen />
       ) : user === null ? (
         <AuthScreen />
