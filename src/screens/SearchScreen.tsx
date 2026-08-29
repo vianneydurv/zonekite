@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
@@ -68,6 +69,45 @@ const VERDICT_ORDER: Record<string, number> = {
   'CONDITIONS MOYENNES': 1,
   'NON NAVIGABLE': 2,
 };
+
+function resultsMapHtml(markers: { id: string; nom: string; lat: number; lon: number }[]) {
+  const points = markers.map((m) => [m.lat, m.lon]);
+  const fitBounds =
+    points.length > 0
+      ? `map.fitBounds(${JSON.stringify(points)}, { padding: [24, 24] });`
+      : `map.setView([46.6, -1.5], 5);`;
+  const markerCalls = markers
+    .map(
+      (m) =>
+        `L.marker([${m.lat}, ${m.lon}], { icon: L.divIcon({ className: 'zonekite-marker', iconSize: [16, 16] }) })
+          .addTo(map)
+          .on('click', () => window.ReactNativeWebView.postMessage(${JSON.stringify(m.id)}));`
+    )
+    .join('\n');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .zonekite-marker { width: 16px; height: 16px; border-radius: 50%; background: #17A673; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: false, attributionControl: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    ${markerCalls}
+    ${fitBounds}
+  </script>
+</body>
+</html>`;
+}
 
 // Écran central : recherche de spot selon jour, créneau, point de départ, distance max
 export default function SearchScreen() {
@@ -285,8 +325,15 @@ export default function SearchScreen() {
         </ScrollView>
       ) : (
         <View style={styles.resultsContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapPlaceholderLabel}>carte des spots</Text>
+          <View style={styles.mapContainer}>
+            <WebView
+              style={styles.map}
+              source={{ html: resultsMapHtml(results.map((r) => r.spot)) }}
+              onMessage={(e: WebViewMessageEvent) => {
+                const spot = results.find((r) => r.spot.id === e.nativeEvent.data)?.spot;
+                if (spot) navigation.navigate('SpotDetail', { spot });
+              }}
+            />
           </View>
 
           <FlatList
@@ -571,20 +618,8 @@ const styles = StyleSheet.create({
   searchButtonDisabled: { opacity: 0.5 },
   searchButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.neutral.white, letterSpacing: 0.5 },
   resultsContainer: { flex: 1 },
-  mapPlaceholder: {
-    height: 150,
-    backgroundColor: '#D4E1E9',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    padding: 10,
-  },
-  mapPlaceholderLabel: {
-    ...typography.mono,
-    color: colors.navy(0.65),
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
+  mapContainer: { height: 150, backgroundColor: '#D4E1E9' },
+  map: { flex: 1 },
   resultsList: { padding: 14, paddingBottom: 30 },
   resultsHeaderRow: { marginBottom: 10 },
   resultsCount: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },

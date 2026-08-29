@@ -28,14 +28,21 @@ import {
 
 const NIVEAUX: NiveauKite[] = ['debutant', 'intermediaire', 'confirme', 'expert'];
 
-export default function OnboardingScreen({ onComplete }: { onComplete: (profile: Profile) => void }) {
-  const [prenom, setPrenom] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [niveau, setNiveau] = useState<NiveauKite | null>(null);
-  const [ville, setVille] = useState('');
-  const [ailes, setAiles] = useState<Aile[]>([]);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [autres, setAutres] = useState<AutreMateriel[]>([]);
+interface Props {
+  onComplete: (profile: Profile) => void;
+  initialProfile?: Profile;
+  onCancel?: () => void;
+}
+
+export default function OnboardingScreen({ onComplete, initialProfile, onCancel }: Props) {
+  const [prenom, setPrenom] = useState(initialProfile?.prenom ?? '');
+  const [photoUri, setPhotoUri] = useState<string | null>(initialProfile?.photoUri ?? null);
+  const [niveau, setNiveau] = useState<NiveauKite | null>(initialProfile?.niveau ?? null);
+  const [ville, setVille] = useState(initialProfile?.ville ?? '');
+  const [ailes, setAiles] = useState<Aile[]>(initialProfile?.materiel.ailes ?? []);
+  const [boards, setBoards] = useState<Board[]>(initialProfile?.materiel.boards ?? []);
+  const [autres, setAutres] = useState<AutreMateriel[]>(initialProfile?.materiel.autres ?? []);
+  const isEditing = initialProfile != null;
 
   const canSubmit =
     prenom.trim().length > 0 && photoUri != null && niveau != null && ville.trim().length > 0;
@@ -81,6 +88,11 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ZONEKITE</Text>
+        {onCancel && (
+          <Pressable style={styles.cancelButton} onPress={onCancel}>
+            <Ionicons name="close" size={22} color={colors.neutral.white} />
+          </Pressable>
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -88,10 +100,13 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent}>
-          <Text style={styles.title}>Bienvenue dans la communauté</Text>
+          <Text style={styles.title}>
+            {isEditing ? 'Modifier ton profil' : 'Bienvenue dans la communauté'}
+          </Text>
           <Text style={styles.subtitle}>
-            Un profil complet instaure la confiance avec les autres membres, notamment pour le
-            covoiturage.
+            {isEditing
+              ? 'Mets à jour tes informations et ton matériel.'
+              : 'Un profil complet instaure la confiance avec les autres membres, notamment pour le covoiturage.'}
           </Text>
 
           <Pressable style={styles.photoPicker} onPress={pickPhoto}>
@@ -179,7 +194,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
             disabled={!canSubmit}
             onPress={handleSubmit}
           >
-            <Text style={styles.submitButtonText}>COMMENCER</Text>
+            <Text style={styles.submitButtonText}>{isEditing ? 'ENREGISTRER' : 'COMMENCER'}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -189,8 +204,16 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.ocean[900] },
-  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: { ...typography.h2, color: colors.neutral.white, letterSpacing: 1 },
+  cancelButton: { padding: 4 },
   card: {
     flex: 1,
     backgroundColor: colors.neutral.background,

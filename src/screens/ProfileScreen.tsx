@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
@@ -10,6 +11,7 @@ import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
 import { NIVEAU_LABELS, type Profile } from '../types/profile';
 import type { Trajet } from '../types/trajet';
+import OnboardingScreen from './OnboardingScreen';
 
 interface NextRide {
   trip: Trajet;
@@ -22,6 +24,7 @@ export default function ProfileScreen() {
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [nextRide, setNextRide] = useState<NextRide | null>(null);
+  const [editing, setEditing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,6 +52,19 @@ export default function ProfileScreen() {
 
   if (!profile) return null;
 
+  if (editing) {
+    return (
+      <OnboardingScreen
+        initialProfile={profile}
+        onCancel={() => setEditing(false)}
+        onComplete={(p) => {
+          setProfile(p);
+          setEditing(false);
+        }}
+      />
+    );
+  }
+
   const ailes = profile.materiel?.ailes ?? [];
   const boards = profile.materiel?.boards ?? [];
   const autres = profile.materiel?.autres ?? [];
@@ -73,7 +89,7 @@ export default function ProfileScreen() {
           <Text style={styles.settingsLinkText}>RÉGLAGES</Text>
         </Pressable>
 
-        <View style={styles.profileRow}>
+        <Pressable style={styles.profileRow} onPress={() => setEditing(true)}>
           <Image source={{ uri: profile.photoUri }} style={styles.photo} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.prenom}>{profile.prenom}</Text>
@@ -82,7 +98,8 @@ export default function ProfileScreen() {
               {profile.ville ? ` · ${profile.ville}` : ''}
             </Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.white(0.5)} />
+        </Pressable>
 
         <View style={styles.statsRow}>
           <View style={styles.statTile}>
@@ -104,9 +121,7 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardEyebrow}>MON MATÉRIEL</Text>
-            <Pressable
-              onPress={() => Alert.alert('Bientôt disponible', "L'édition du matériel arrive dans une prochaine étape.")}
-            >
+            <Pressable onPress={() => setEditing(true)}>
               <Text style={styles.cardLink}>Modifier</Text>
             </Pressable>
           </View>

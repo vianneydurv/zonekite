@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { Image, Linking, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
@@ -23,28 +22,9 @@ const TIDE_LABELS: Record<string, string> = {
   inconnue: 'Non documenté',
 };
 
-function mapHtml(lat: number, lon: number) {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .zonekite-marker { width: 18px; height: 18px; border-radius: 50%; background: #17A673; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map', { zoomControl: true }).setView([${lat}, ${lon}], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    L.marker([${lat}, ${lon}], { icon: L.divIcon({ className: 'zonekite-marker', iconSize: [18, 18] }) }).addTo(map);
-  </script>
-</body>
-</html>`;
+function openItinerary(spot: Spot) {
+  const label = encodeURIComponent(spot.nom);
+  Linking.openURL(`https://maps.apple.com/?daddr=${spot.lat},${spot.lon}&q=${label}&dirflg=d`);
 }
 
 export default function SpotDetailScreen({ route }: Props) {
@@ -71,12 +51,28 @@ export default function SpotDetailScreen({ route }: Props) {
     ? Math.max(0, Math.min(100, ((condition.windSpeed - windMin) / (windMax - windMin)) * 100))
     : 0;
 
+  const hero = (
+    <View>
+      <View style={styles.hero}>
+        {spot.photoUrl ? (
+          <Image source={{ uri: spot.photoUrl }} style={styles.heroImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.heroPlaceholder}>
+            <Ionicons name="image-outline" size={32} color={colors.navy(0.3)} />
+          </View>
+        )}
+      </View>
+      <Pressable style={styles.itineraryBar} onPress={() => openItinerary(spot)}>
+        <Ionicons name="navigate" size={15} color={colors.blue} />
+        <Text style={styles.itineraryBarText}>ITINÉRAIRE</Text>
+      </Pressable>
+    </View>
+  );
+
   if (!condition) {
     return (
       <View style={styles.container}>
-        <View style={styles.hero}>
-          <WebView style={styles.map} source={{ html: mapHtml(spot.lat, spot.lon) }} />
-        </View>
+        {hero}
         <View style={styles.loadingBanner}>
           <Text style={styles.loadingText}>Récupération des conditions…</Text>
         </View>
@@ -86,9 +82,7 @@ export default function SpotDetailScreen({ route }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.hero}>
-        <WebView style={styles.map} source={{ html: mapHtml(spot.lat, spot.lon) }} />
-      </View>
+      {hero}
 
       <View style={[styles.verdictBanner, { backgroundColor: condition.color }]}>
         <Text style={styles.verdictText}>{condition.verdict}</Text>
@@ -204,7 +198,25 @@ export default function SpotDetailScreen({ route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral.background },
   hero: { height: 200 },
-  map: { flex: 1 },
+  heroImage: { width: '100%', height: '100%' },
+  heroPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.ocean[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itineraryBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: colors.neutral.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.navy(0.08),
+  },
+  itineraryBarText: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.blue, letterSpacing: 0.5 },
   verdictBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',

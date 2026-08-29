@@ -20,7 +20,9 @@ import type { Trajet } from '../types/trajet';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'CreateTrip'>;
 
-const HOURS = Array.from({ length: 17 }, (_, i) => `${i + 6}h`);
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6).flatMap((h) =>
+  [0, 15, 30, 45].map((m) => `${h}h${String(m).padStart(2, '0')}`)
+);
 
 function nextDays(count: number) {
   return Array.from({ length: count }, (_, i) => {
