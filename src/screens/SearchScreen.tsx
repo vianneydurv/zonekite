@@ -18,7 +18,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
 import { getTrips } from '../lib/tripsStorage';
-import { getMockCondition } from '../lib/mockConditions';
+import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
 import { spots } from '../data/spots';
 import type { Spot } from '../types/spot';
 
@@ -113,13 +113,27 @@ export default function SearchScreen() {
 
   const isOutOfRange = selectedDate > windowEnd;
 
-  const dateIso = selectedDate.toISOString().slice(0, 10);
+  const dateIso = localDateIso(selectedDate);
 
-  const results = useMemo(() => {
-    return spots
-      .map((spot) => ({ spot, condition: getMockCondition(spot, dateIso) }))
-      .sort((a, b) => VERDICT_ORDER[a.condition.verdict] - VERDICT_ORDER[b.condition.verdict]);
-  }, [dateIso]);
+  const [results, setResults] = useState<{ spot: Spot; condition: SpotCondition }[]>([]);
+  const [loadingResults, setLoadingResults] = useState(false);
+
+  useEffect(() => {
+    if (!searched) return;
+    let cancelled = false;
+    setLoadingResults(true);
+    Promise.all(spots.map((spot) => getSpotCondition(spot, dateIso).then((condition) => ({ spot, condition })))).then(
+      (list) => {
+        if (cancelled) return;
+        list.sort((a, b) => VERDICT_ORDER[a.condition.verdict] - VERDICT_ORDER[b.condition.verdict]);
+        setResults(list);
+        setLoadingResults(false);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [dateIso, searched]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -282,7 +296,9 @@ export default function SearchScreen() {
             ListHeaderComponent={
               <View style={styles.resultsHeaderRow}>
                 <Text style={styles.resultsCount}>
-                  {results.length} SPOTS · MEILLEURES CONDITIONS D'ABORD
+                  {loadingResults
+                    ? 'RÉCUPÉRATION DES CONDITIONS…'
+                    : `${results.length} SPOTS · MEILLEURES CONDITIONS D'ABORD`}
                 </Text>
               </View>
             }

@@ -1,8 +1,7 @@
 import type { CompassDirection, Spot } from '../types/spot';
 
-// Prévisions vent réelles via Open-Meteo (gratuit, sans clé). Fonction 3 de la
-// roadmap : fournit la donnée brute, pas encore le verdict (voir Fonction 5,
-// qui combinera ceci avec la marée dans mockConditions.ts).
+// Prévisions vent réelles via Open-Meteo (gratuit, sans clé). Fournit la
+// donnée brute ; voir src/lib/matching.ts pour le verdict combiné vent+marée.
 export interface HourlyWind {
   time: string; // ISO local (fuseau du spot), ex. "2026-08-29T14:00"
   windSpeedKn: number;

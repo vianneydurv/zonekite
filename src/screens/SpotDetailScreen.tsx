@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
-import { getMockCondition } from '../lib/mockConditions';
+import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import type { Spot } from '../types/spot';
 
@@ -52,6 +52,7 @@ export default function SpotDetailScreen({ route }: Props) {
   const navigation = useNavigation<any>();
   const [fav, setFav] = useState(false);
   const [carpoolCount, setCarpoolCount] = useState(0);
+  const [condition, setCondition] = useState<SpotCondition | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,12 +61,28 @@ export default function SpotDetailScreen({ route }: Props) {
     }, [spot.id])
   );
 
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const condition = getMockCondition(spot, todayIso);
+  useEffect(() => {
+    getSpotCondition(spot, localDateIso(new Date())).then(setCondition);
+  }, [spot.id]);
 
   const windMin = spot.ventMinNoeuds ?? 12;
   const windMax = spot.ventMaxNoeuds ?? 30;
-  const windPct = Math.max(0, Math.min(100, ((condition.windSpeed - windMin) / (windMax - windMin)) * 100));
+  const windPct = condition
+    ? Math.max(0, Math.min(100, ((condition.windSpeed - windMin) / (windMax - windMin)) * 100))
+    : 0;
+
+  if (!condition) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.hero}>
+          <WebView style={styles.map} source={{ html: mapHtml(spot.lat, spot.lon) }} />
+        </View>
+        <View style={styles.loadingBanner}>
+          <Text style={styles.loadingText}>Récupération des conditions…</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -98,7 +115,7 @@ export default function SpotDetailScreen({ route }: Props) {
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardEyebrow}>MAINTENANT vs IDÉAL</Text>
-            <Text style={styles.cardEyebrowValue}>démo</Text>
+            <Text style={styles.cardEyebrowValue}>aujourd'hui</Text>
           </View>
 
           <View style={styles.barRow}>
@@ -195,6 +212,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
   },
+  loadingBanner: { padding: 16, alignItems: 'center' },
+  loadingText: { ...typography.body, color: colors.navy(0.5) },
   verdictText: { ...typography.caption, color: colors.neutral.white, letterSpacing: 1.1, fontFamily: typography.h3.fontFamily },
   verdictWindow: { ...typography.bodyBold, color: colors.neutral.white },
   content: { padding: 15, paddingBottom: 20 },
