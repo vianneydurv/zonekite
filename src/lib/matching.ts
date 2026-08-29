@@ -99,6 +99,30 @@ function formatHour(naiveIso: string): string {
   return `${naiveIso.slice(11, 13)}h`;
 }
 
+export interface HourCondition {
+  hourLabel: string;
+  windSpeedKn: number;
+  windDir: CompassDirection;
+  tideRising: boolean | null;
+  level: 'bon' | 'moyen' | 'mauvais';
+}
+
+export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<HourCondition[]> {
+  const forecast = await getWindForecast(spot);
+  return forecast
+    .filter((h) => h.time.startsWith(dateIso))
+    .map((hour) => {
+      const tide = spot.mareeRef ? getTideState(spot.mareeRef, parseParisLocal(hour.time)) : null;
+      return {
+        hourLabel: formatHour(hour.time),
+        windSpeedKn: hour.windSpeedKn,
+        windDir: hour.windDir,
+        tideRising: tide ? tide.rising : null,
+        level: hourLevel(hour, spot),
+      };
+    });
+}
+
 export async function getSpotCondition(spot: Spot, dateIso: string): Promise<SpotCondition> {
   const forecast = await getWindForecast(spot);
   const dayHours = forecast.filter((h) => h.time.startsWith(dateIso));

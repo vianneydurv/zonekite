@@ -4,9 +4,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
-import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
+import {
+  getHourlyConditions,
+  getSpotCondition,
+  localDateIso,
+  type HourCondition,
+  type SpotCondition,
+} from '../lib/matching';
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import type { Spot } from '../types/spot';
+
+const LEVEL_COLORS = { bon: '#17A673', moyen: '#F0A020', mauvais: '#E04B3C' };
+// Plage horaire pertinente pour le kite (cohérente avec la recherche).
+const DISPLAY_HOURS_START = 6;
+const DISPLAY_HOURS_END = 22;
 
 interface Props {
   route: { params: { spot: Spot } };
@@ -33,6 +44,7 @@ export default function SpotDetailScreen({ route }: Props) {
   const [fav, setFav] = useState(false);
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [condition, setCondition] = useState<SpotCondition | null>(null);
+  const [hourly, setHourly] = useState<HourCondition[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,7 +54,12 @@ export default function SpotDetailScreen({ route }: Props) {
   );
 
   useEffect(() => {
-    getSpotCondition(spot, localDateIso(new Date())).then(setCondition);
+    const dateIso = localDateIso(new Date());
+    getSpotCondition(spot, dateIso).then(setCondition);
+    getHourlyConditions(spot, dateIso).then((list) => {
+      const hour = (h: HourCondition) => Number(h.hourLabel.replace('h', ''));
+      setHourly(list.filter((h) => hour(h) >= DISPLAY_HOURS_START && hour(h) <= DISPLAY_HOURS_END));
+    });
   }, [spot.id]);
 
   const windMin = spot.ventMinNoeuds ?? 12;
@@ -105,6 +122,33 @@ export default function SpotDetailScreen({ route }: Props) {
             </View>
           )}
         </View>
+
+        {hourly.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardEyebrow}>ÉVOLUTION DANS LA JOURNÉE</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.hourlyScroll}
+              contentContainerStyle={styles.hourlyScrollContent}
+            >
+              {hourly.map((h, i) => (
+                <View key={i} style={[styles.hourChip, { borderColor: LEVEL_COLORS[h.level] }]}>
+                  <Text style={styles.hourChipHour}>{h.hourLabel}</Text>
+                  <Text style={styles.hourChipWind}>{h.windSpeedKn} nds</Text>
+                  <Text style={styles.hourChipDir}>{h.windDir}</Text>
+                  {h.tideRising != null && (
+                    <Ionicons
+                      name={h.tideRising ? 'arrow-up' : 'arrow-down'}
+                      size={12}
+                      color={colors.navy(0.45)}
+                    />
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
@@ -245,6 +289,20 @@ const styles = StyleSheet.create({
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 },
   cardEyebrow: { ...typography.caption, color: colors.navy(0.55), letterSpacing: 1 },
   cardEyebrowValue: { ...typography.caption, color: colors.navy(0.3) },
+  hourlyScroll: { marginTop: 12 },
+  hourlyScrollContent: { gap: 8, paddingRight: 4 },
+  hourChip: {
+    width: 60,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    backgroundColor: colors.neutral.background,
+    gap: 3,
+  },
+  hourChipHour: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
+  hourChipWind: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.navyBase },
+  hourChipDir: { ...typography.caption, color: colors.navy(0.5) },
   barRow: { marginBottom: 12 },
   barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
   barLabel: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
