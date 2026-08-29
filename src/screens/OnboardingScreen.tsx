@@ -131,7 +131,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
             ))}
           </View>
 
-          <Text style={styles.fieldLabel}>VILLE · POINT DE DÉPART *</Text>
+          <Text style={styles.fieldLabel}>VILLE *</Text>
           <TextInput
             style={styles.input}
             value={ville}
@@ -139,7 +139,6 @@ export default function OnboardingScreen({ onComplete }: { onComplete: (profile:
             placeholder="Ta ville"
             placeholderTextColor={colors.neutral.textSecondary}
           />
-          <Text style={styles.hint}>Utilisée pour préremplir ton point de départ en recherche.</Text>
 
           <MaterielSection<Aile>
             title="AILES · OPTIONNEL"
@@ -230,7 +229,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.ocean[900],
   },
-  hint: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 6 },
   niveauRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   niveauChip: {
     borderRadius: 20,

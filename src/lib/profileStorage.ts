@@ -1,19 +1,20 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
 import type { Profile } from '../types/profile';
 
-// Stockage local en attendant Firebase (étape 9 de la roadmap) : le profil
-// vit sur l'appareil pour l'instant, pas de compte multi-appareil possible.
-const PROFILE_KEY = '@zonekite/profile';
+function profileDoc(uid: string) {
+  return doc(db, 'profiles', uid);
+}
 
 export async function getProfile(): Promise<Profile | null> {
-  const raw = await AsyncStorage.getItem(PROFILE_KEY);
-  return raw ? JSON.parse(raw) : null;
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
+  const snap = await getDoc(profileDoc(uid));
+  return snap.exists() ? (snap.data() as Profile) : null;
 }
 
 export async function saveProfile(profile: Profile): Promise<void> {
-  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-}
-
-export async function clearProfile(): Promise<void> {
-  await AsyncStorage.removeItem(PROFILE_KEY);
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Aucun utilisateur connecté');
+  await setDoc(profileDoc(uid), profile);
 }

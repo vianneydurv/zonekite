@@ -25,4 +25,6 @@ export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
 
-export const db = getFirestore(app);
+// La base Firestore a été créée sous l'ID "zonekite" (pas l'ID par défaut
+// "(default)") depuis la console Firebase, donc on le précise ici.
+export const db = getFirestore(app, 'zonekite');

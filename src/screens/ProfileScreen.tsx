@@ -3,6 +3,7 @@ import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, Vi
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
+import { signOut } from '../lib/auth';
 import { getTrips } from '../lib/tripsStorage';
 import { getRequestedTripIds } from '../lib/rideRequests';
 import { getFavoriteIds } from '../lib/favorites';
@@ -62,7 +63,12 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Pressable
           style={styles.settingsLink}
-          onPress={() => Alert.alert('Bientôt disponible', "L'édition du profil arrive dans une prochaine étape.")}
+          onPress={() =>
+            Alert.alert('Réglages', undefined, [
+              { text: 'Annuler', style: 'cancel' },
+              { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },
+            ])
+          }
         >
           <Text style={styles.settingsLinkText}>RÉGLAGES</Text>
         </Pressable>
