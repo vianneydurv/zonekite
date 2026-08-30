@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Linking, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
@@ -14,10 +15,11 @@ import {
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import type { Spot } from '../types/spot';
 
-const LEVEL_COLORS = { bon: '#17A673', moyen: '#F0A020', mauvais: '#E04B3C' };
 // Plage horaire pertinente pour le kite (cohérente avec la recherche).
 const DISPLAY_HOURS_START = 6;
 const DISPLAY_HOURS_END = 22;
+// Écart rafale - vent moyen (nds) à partir duquel on considère le vent rafaleux.
+const GUST_THRESHOLD_KN = 6;
 
 interface Props {
   route: { params: { spot: Spot } };
@@ -45,6 +47,7 @@ export default function SpotDetailScreen({ route }: Props) {
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [condition, setCondition] = useState<SpotCondition | null>(null);
   const [hourly, setHourly] = useState<HourCondition[]>([]);
+  const [selectedHourIndex, setSelectedHourIndex] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,15 +61,23 @@ export default function SpotDetailScreen({ route }: Props) {
     getSpotCondition(spot, dateIso).then(setCondition);
     getHourlyConditions(spot, dateIso).then((list) => {
       const hour = (h: HourCondition) => Number(h.hourLabel.replace('h', ''));
-      setHourly(list.filter((h) => hour(h) >= DISPLAY_HOURS_START && hour(h) <= DISPLAY_HOURS_END));
+      const filtered = list.filter((h) => hour(h) >= DISPLAY_HOURS_START && hour(h) <= DISPLAY_HOURS_END);
+      setHourly(filtered);
+      const nowHour = new Date().getHours();
+      const closest = filtered.findIndex((h) => hour(h) >= nowHour);
+      setSelectedHourIndex(closest === -1 ? 0 : closest);
     });
   }, [spot.id]);
 
+  const selected = hourly[selectedHourIndex] ?? null;
+
   const windMin = spot.ventMinNoeuds ?? 12;
   const windMax = spot.ventMaxNoeuds ?? 30;
-  const windPct = condition
-    ? Math.max(0, Math.min(100, ((condition.windSpeed - windMin) / (windMax - windMin)) * 100))
+  const windPct = selected
+    ? Math.max(0, Math.min(100, ((selected.windSpeedKn - windMin) / (windMax - windMin)) * 100))
     : 0;
+  const gustDelta = selected ? selected.windGustKn - selected.windSpeedKn : 0;
+  const isGusty = gustDelta >= GUST_THRESHOLD_KN;
 
   const hero = (
     <View>
@@ -86,7 +97,7 @@ export default function SpotDetailScreen({ route }: Props) {
     </View>
   );
 
-  if (!condition) {
+  if (!condition || !selected) {
     return (
       <View style={styles.container}>
         {hero}
@@ -123,43 +134,32 @@ export default function SpotDetailScreen({ route }: Props) {
           )}
         </View>
 
-        {hourly.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardEyebrow}>ÉVOLUTION DANS LA JOURNÉE</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.hourlyScroll}
-              contentContainerStyle={styles.hourlyScrollContent}
-            >
-              {hourly.map((h, i) => (
-                <View key={i} style={[styles.hourChip, { borderColor: LEVEL_COLORS[h.level] }]}>
-                  <Text style={styles.hourChipHour}>{h.hourLabel}</Text>
-                  <Text style={styles.hourChipWind}>{h.windSpeedKn} nds</Text>
-                  <Text style={styles.hourChipDir}>{h.windDir}</Text>
-                  {h.tideRising != null && (
-                    <Ionicons
-                      name={h.tideRising ? 'arrow-up' : 'arrow-down'}
-                      size={12}
-                      color={colors.navy(0.45)}
-                    />
-                  )}
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardEyebrow}>MAINTENANT vs IDÉAL</Text>
-            <Text style={styles.cardEyebrowValue}>aujourd'hui</Text>
+            <Text style={styles.cardEyebrowValue}>à {selected.hourLabel}</Text>
+          </View>
+
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_START}h</Text>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={Math.max(hourly.length - 1, 0)}
+              step={1}
+              value={selectedHourIndex}
+              onValueChange={setSelectedHourIndex}
+              minimumTrackTintColor={colors.blue}
+              maximumTrackTintColor={colors.neutral.border}
+              thumbTintColor={colors.blue}
+            />
+            <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_END}h</Text>
           </View>
 
           <View style={styles.barRow}>
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Force du vent</Text>
-              <Text style={styles.barValue}>{condition.windSpeed} nds</Text>
+              <Text style={styles.barValue}>{selected.windSpeedKn} nds</Text>
             </View>
             <View style={styles.barTrack}>
               <View
@@ -176,7 +176,7 @@ export default function SpotDetailScreen({ route }: Props) {
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Direction</Text>
               <Text style={styles.barValue}>
-                {condition.windDir}{' '}
+                {selected.windDir}{' '}
                 <Text style={styles.barValueMuted}>
                   / idéal {spot.directionsFavorables?.join('–') ?? '—'}
                 </Text>
@@ -191,11 +191,20 @@ export default function SpotDetailScreen({ route }: Props) {
           <View style={styles.barRow}>
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Marée</Text>
-              <Text style={styles.barValue}>{condition.tideLabel}</Text>
+              <Text style={styles.barValue}>{selected.tideLabel}</Text>
             </View>
             <View style={styles.barTrack}>
               <View style={[styles.barIdealZone, styles.barIdealZoneTide, { left: '20%', width: '46%' }]} />
               <View style={[styles.barMarker, styles.barMarkerTide, { left: '34%' }]} />
+            </View>
+          </View>
+
+          <View style={[styles.barRow, { marginBottom: 0 }]}>
+            <View style={styles.barLabelRow}>
+              <Text style={styles.barLabel}>Rafales</Text>
+              <Text style={[styles.barValue, isGusty && styles.barValueWarning]}>
+                {selected.windGustKn} nds · {isGusty ? 'Vent rafaleux' : 'Vent stable'}
+              </Text>
             </View>
           </View>
 
@@ -220,7 +229,14 @@ export default function SpotDetailScreen({ route }: Props) {
       <View style={styles.footer}>
         <Pressable
           style={styles.footerCta}
-          onPress={() => navigation.getParent()?.navigate('Carpool')}
+          onPress={() =>
+            carpoolCount > 0
+              ? navigation.getParent()?.navigate('Carpool')
+              : navigation.getParent()?.navigate('Carpool', {
+                  screen: 'CreateTrip',
+                  params: { spotId: spot.id },
+                })
+          }
         >
           <Text style={styles.footerCtaText}>
             {carpoolCount > 0
@@ -289,21 +305,11 @@ const styles = StyleSheet.create({
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 },
   cardEyebrow: { ...typography.caption, color: colors.navy(0.55), letterSpacing: 1 },
   cardEyebrowValue: { ...typography.caption, color: colors.navy(0.3) },
-  hourlyScroll: { marginTop: 12 },
-  hourlyScrollContent: { gap: 8, paddingRight: 4 },
-  hourChip: {
-    width: 60,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    backgroundColor: colors.neutral.background,
-    gap: 3,
-  },
-  hourChipHour: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
-  hourChipWind: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.navyBase },
-  hourChipDir: { ...typography.caption, color: colors.navy(0.5) },
+  sliderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  slider: { flex: 1, height: 36 },
+  sliderEdgeLabel: { ...typography.caption, color: colors.navy(0.4) },
   barRow: { marginBottom: 12 },
+  barValueWarning: { color: '#D9530A' },
   barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
   barLabel: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
   barValue: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },

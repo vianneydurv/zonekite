@@ -102,8 +102,9 @@ function formatHour(naiveIso: string): string {
 export interface HourCondition {
   hourLabel: string;
   windSpeedKn: number;
+  windGustKn: number;
   windDir: CompassDirection;
-  tideRising: boolean | null;
+  tideLabel: string;
   level: 'bon' | 'moyen' | 'mauvais';
 }
 
@@ -116,8 +117,9 @@ export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<
       return {
         hourLabel: formatHour(hour.time),
         windSpeedKn: hour.windSpeedKn,
+        windGustKn: hour.windGustKn,
         windDir: hour.windDir,
-        tideRising: tide ? tide.rising : null,
+        tideLabel: tide ? tideLabelFor(tide.heightFraction, tide.rising) : 'Marée inconnue',
         level: hourLevel(hour, spot),
       };
     });

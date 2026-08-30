@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -32,10 +32,10 @@ function nextDays(count: number) {
   });
 }
 
-export default function CreateTripScreen({ navigation }: Props) {
+export default function CreateTripScreen({ navigation, route }: Props) {
   const days = useMemo(() => nextDays(14), []);
 
-  const [spotId, setSpotId] = useState<string | null>(null);
+  const [spotId, setSpotId] = useState<string | null>(route.params?.spotId ?? null);
   const [showSpotPicker, setShowSpotPicker] = useState(false);
   const [spotFilter, setSpotFilter] = useState('');
   const [selectedDate, setSelectedDate] = useState(days[0]);
@@ -45,6 +45,12 @@ export default function CreateTripScreen({ navigation }: Props) {
   const [adresseDepart, setAdresseDepart] = useState('');
   const [vehicule, setVehicule] = useState('');
   const [places, setPlaces] = useState(1);
+
+  useEffect(() => {
+    getProfile().then((profile) => {
+      if (profile?.ville) setAdresseDepart(profile.ville);
+    });
+  }, []);
 
   const selectedSpot = spots.find((s) => s.id === spotId);
   const filteredSpots = spots.filter((s) =>

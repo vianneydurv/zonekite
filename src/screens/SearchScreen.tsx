@@ -418,6 +418,7 @@ export default function SearchScreen() {
           </View>
 
           <FlatList
+            style={styles.resultsFlatList}
             data={results}
             keyExtractor={({ spot }) => spot.id}
             onViewableItemsChanged={onViewableItemsChanged}
@@ -716,7 +717,8 @@ const styles = StyleSheet.create({
   resultsContainer: { flex: 1 },
   mapContainer: { height: 150, backgroundColor: '#D4E1E9' },
   map: { flex: 1 },
-  resultsList: { padding: 14, paddingBottom: 30 },
+  resultsFlatList: { flex: 1 },
+  resultsList: { padding: 14, paddingBottom: 40 },
   resultsHeaderRow: { marginBottom: 10 },
   resultsCount: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
   modalBackdrop: {
