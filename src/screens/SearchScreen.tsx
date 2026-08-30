@@ -447,6 +447,7 @@ export default function SearchScreen() {
                 onCarpoolPress={() => navigation.getParent()?.navigate('Carpool')}
               />
             )}
+            ListFooterComponent={<View style={styles.resultsListFooter} />}
           />
         </View>
       )}
@@ -718,7 +719,8 @@ const styles = StyleSheet.create({
   mapContainer: { height: 150, backgroundColor: '#D4E1E9' },
   map: { flex: 1 },
   resultsFlatList: { flex: 1 },
-  resultsList: { padding: 14, paddingBottom: 40 },
+  resultsList: { padding: 14 },
+  resultsListFooter: { height: 120 },
   resultsHeaderRow: { marginBottom: 10 },
   resultsCount: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
   modalBackdrop: {

@@ -18,6 +18,13 @@ import { colors, typography } from '../theme';
 import { saveProfile } from '../lib/profileStorage';
 import MaterielSection from '../components/MaterielSection';
 import {
+  AUTRE,
+  AILE_BRANDS,
+  AILE_MODELS_BY_BRAND,
+  BOARD_BRANDS,
+  BOARD_MODELS_BY_BRAND,
+} from '../data/equipmentBrands';
+import {
   NIVEAU_LABELS,
   type Aile,
   type AutreMateriel,
@@ -162,8 +169,17 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
             onChange={setAiles}
             emptyItem={{ marque: '', modele: '', taille: '' }}
             fields={[
-              { key: 'marque', placeholder: 'Marque' },
-              { key: 'modele', placeholder: 'Modèle' },
+              { key: 'marque', placeholder: 'Marque', options: AILE_BRANDS },
+              {
+                key: 'modele',
+                placeholder: 'Modèle',
+                options: (item) =>
+                  !item.marque
+                    ? []
+                    : item.marque === AUTRE
+                      ? null
+                      : (AILE_MODELS_BY_BRAND[item.marque] ?? []),
+              },
               { key: 'taille', placeholder: 'Taille' },
             ]}
           />
@@ -175,8 +191,17 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
             onChange={setBoards}
             emptyItem={{ marque: '', modele: '' }}
             fields={[
-              { key: 'marque', placeholder: 'Marque' },
-              { key: 'modele', placeholder: 'Modèle' },
+              { key: 'marque', placeholder: 'Marque', options: BOARD_BRANDS },
+              {
+                key: 'modele',
+                placeholder: 'Modèle',
+                options: (item) =>
+                  !item.marque
+                    ? []
+                    : item.marque === AUTRE
+                      ? null
+                      : (BOARD_MODELS_BY_BRAND[item.marque] ?? []),
+              },
             ]}
           />
 
