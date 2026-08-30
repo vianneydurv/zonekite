@@ -46,4 +46,7 @@ export interface Spot {
   source: string;
   // URL d'une photo du spot (facultatif, à compléter au fil de l'eau)
   photoUrl?: string;
+  // Identifiant numérique du spot sur windguru.cz (ex : 48743), pour le
+  // lien "Voir sur Windguru". Absent = spot pas encore répertorié.
+  windguruId?: number;
 }

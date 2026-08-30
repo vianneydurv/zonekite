@@ -16,6 +16,7 @@ import { colors, typography } from '../theme';
 import { spots } from '../data/spots';
 import { addTrip } from '../lib/tripsStorage';
 import { getProfile } from '../lib/profileStorage';
+import { localDateIso } from '../lib/matching';
 import type { Trajet } from '../types/trajet';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'CreateTrip'>;
@@ -52,6 +53,16 @@ export default function CreateTripScreen({ navigation, route }: Props) {
     });
   }, []);
 
+  useEffect(() => {
+    const params = route.params;
+    if (params?.date) {
+      const [y, m, d] = params.date.split('-').map(Number);
+      setSelectedDate(new Date(y, m - 1, d));
+    }
+    if (params?.heureDepart) setHeureDepart(params.heureDepart);
+    if (params?.heureRetour) setHeureRetour(params.heureRetour);
+  }, []);
+
   const selectedSpot = spots.find((s) => s.id === spotId);
   const filteredSpots = spots.filter((s) =>
     s.nom.toLowerCase().includes(spotFilter.toLowerCase())
@@ -67,7 +78,7 @@ export default function CreateTripScreen({ navigation, route }: Props) {
       spotId,
       conducteurPrenom: profile?.prenom ?? 'Moi',
       conducteurPhotoUri: profile?.photoUri,
-      date: selectedDate.toISOString().slice(0, 10),
+      date: localDateIso(selectedDate),
       heureDepart,
       heureRetourEstimee: heureRetour ?? undefined,
       adresseDepart: adresseDepart.trim(),

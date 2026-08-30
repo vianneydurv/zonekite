@@ -22,7 +22,18 @@ const DISPLAY_HOURS_END = 22;
 const GUST_THRESHOLD_KN = 6;
 
 interface Props {
-  route: { params: { spot: Spot } };
+  route: {
+    params: {
+      spot: Spot;
+      searchDate?: string;
+      searchStartHour?: number;
+      searchEndHour?: number;
+    };
+  };
+}
+
+function formatHourNumber(h: number): string {
+  return `${h}h00`;
 }
 
 const TIDE_LABELS: Record<string, string> = {
@@ -41,7 +52,7 @@ function openItinerary(spot: Spot) {
 }
 
 export default function SpotDetailScreen({ route }: Props) {
-  const { spot } = route.params;
+  const { spot, searchDate, searchStartHour, searchEndHour } = route.params;
   const navigation = useNavigation<any>();
   const [fav, setFav] = useState(false);
   const [carpoolCount, setCarpoolCount] = useState(0);
@@ -136,12 +147,11 @@ export default function SpotDetailScreen({ route }: Props) {
 
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardEyebrow}>MAINTENANT vs IDÉAL</Text>
-            <Text style={styles.cardEyebrowValue}>à {selected.hourLabel}</Text>
+            <Text style={styles.cardEyebrow}>PRÉVISIONS</Text>
           </View>
 
-          <View style={styles.sliderRow}>
-            <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_START}h</Text>
+          <View style={styles.sliderCard}>
+            <Text style={styles.sliderHourLabel}>{selected.hourLabel}</Text>
             <Slider
               style={styles.slider}
               minimumValue={0}
@@ -153,7 +163,18 @@ export default function SpotDetailScreen({ route }: Props) {
               maximumTrackTintColor={colors.neutral.border}
               thumbTintColor={colors.blue}
             />
-            <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_END}h</Text>
+            <View style={styles.sliderTicksRow}>
+              {hourly.map((h, i) => (
+                <View
+                  key={i}
+                  style={[styles.sliderTick, i === selectedHourIndex && styles.sliderTickActive]}
+                />
+              ))}
+            </View>
+            <View style={styles.sliderEdgeRow}>
+              <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_START}h</Text>
+              <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_END}h</Text>
+            </View>
           </View>
 
           <View style={styles.barRow}>
@@ -212,6 +233,16 @@ export default function SpotDetailScreen({ route }: Props) {
             {TIDE_LABELS[spot.contrainteMaree]}
             {spot.contrainteMareeDetail ? ` — ${spot.contrainteMareeDetail}` : ''}
           </Text>
+
+          {spot.windguruId != null && (
+            <Pressable
+              style={styles.windguruButton}
+              onPress={() => Linking.openURL(`https://www.windguru.cz/${spot.windguruId}`)}
+            >
+              <Ionicons name="open-outline" size={15} color={colors.blue} />
+              <Text style={styles.windguruButtonText}>VOIR SUR WINDGURU</Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -234,7 +265,12 @@ export default function SpotDetailScreen({ route }: Props) {
               ? navigation.getParent()?.navigate('Carpool')
               : navigation.getParent()?.navigate('Carpool', {
                   screen: 'CreateTrip',
-                  params: { spotId: spot.id },
+                  params: {
+                    spotId: spot.id,
+                    date: searchDate,
+                    heureDepart: searchStartHour != null ? formatHourNumber(searchStartHour) : undefined,
+                    heureRetour: searchEndHour != null ? formatHourNumber(searchEndHour) : undefined,
+                  },
                 })
           }
         >
@@ -304,10 +340,32 @@ const styles = StyleSheet.create({
   },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 },
   cardEyebrow: { ...typography.caption, color: colors.navy(0.55), letterSpacing: 1 },
-  cardEyebrowValue: { ...typography.caption, color: colors.navy(0.3) },
-  sliderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  slider: { flex: 1, height: 36 },
+  sliderCard: {
+    backgroundColor: colors.neutral.background,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    alignItems: 'center',
+  },
+  sliderHourLabel: { fontFamily: typography.h1.fontFamily, fontSize: 26, color: colors.blue, marginBottom: 2 },
+  slider: { width: '100%', height: 32 },
+  sliderTicksRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 10, marginTop: -6 },
+  sliderTick: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.navy(0.2) },
+  sliderTickActive: { backgroundColor: colors.blue, width: 4, height: 4, borderRadius: 2 },
+  sliderEdgeRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 6 },
   sliderEdgeLabel: { ...typography.caption, color: colors.navy(0.4) },
+  windguruButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.neutral.border,
+  },
+  windguruButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.blue, letterSpacing: 0.4 },
   barRow: { marginBottom: 12 },
   barValueWarning: { color: '#D9530A' },
   barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },

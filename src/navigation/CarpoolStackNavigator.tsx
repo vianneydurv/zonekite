@@ -6,7 +6,9 @@ import { colors, typography } from '../theme';
 
 export type CarpoolStackParamList = {
   CarpoolList: undefined;
-  CreateTrip: { spotId?: string } | undefined;
+  CreateTrip:
+    | { spotId?: string; date?: string; heureDepart?: string; heureRetour?: string }
+    | undefined;
   TripDetail: { tripId: string };
 };
 

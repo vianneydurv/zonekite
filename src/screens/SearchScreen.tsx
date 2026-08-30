@@ -412,7 +412,14 @@ export default function SearchScreen() {
               source={{ html: mapHtml }}
               onMessage={(e: WebViewMessageEvent) => {
                 const spot = results.find((r) => r.spot.id === e.nativeEvent.data)?.spot;
-                if (spot) navigation.navigate('SpotDetail', { spot });
+                if (spot) {
+                  navigation.navigate('SpotDetail', {
+                    spot,
+                    searchDate: dateIso,
+                    searchStartHour: startHour,
+                    searchEndHour: endHour,
+                  });
+                }
               }}
             />
           </View>
@@ -443,7 +450,14 @@ export default function SearchScreen() {
                 windDir={item.condition.windDir}
                 tideLabel={item.condition.tideLabel}
                 carpoolCount={carpoolCounts[item.spot.id] ?? 0}
-                onPress={() => navigation.navigate('SpotDetail', { spot: item.spot })}
+                onPress={() =>
+                  navigation.navigate('SpotDetail', {
+                    spot: item.spot,
+                    searchDate: dateIso,
+                    searchStartHour: startHour,
+                    searchEndHour: endHour,
+                  })
+                }
                 onCarpoolPress={() => navigation.getParent()?.navigate('Carpool')}
               />
             )}
@@ -720,7 +734,7 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   resultsFlatList: { flex: 1 },
   resultsList: { padding: 14 },
-  resultsListFooter: { height: 120 },
+  resultsListFooter: { height: 260 },
   resultsHeaderRow: { marginBottom: 10 },
   resultsCount: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
   modalBackdrop: {
