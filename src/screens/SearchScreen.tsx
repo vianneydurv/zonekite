@@ -78,7 +78,7 @@ function dayShortLabel(date: Date) {
 }
 
 const VERDICT_ORDER: Record<string, number> = {
-  'BONNES CONDITIONS': 0,
+  'MEILLEURES CONDITIONS ENTRE': 0,
   'CONDITIONS MOYENNES': 1,
   'NON NAVIGABLE': 2,
 };
@@ -474,6 +474,7 @@ export default function SearchScreen() {
                   windSpeed={item.condition.windSpeed}
                   windDir={item.condition.windDir}
                   tideLabel={item.condition.tideLabel}
+                  readingHour={item.condition.readingHour}
                   carpoolCount={carpoolCounts[item.spot.id] ?? 0}
                   onPress={() =>
                     navigation.navigate('SpotDetail', {
@@ -559,6 +560,7 @@ function ResultCard({
   windSpeed,
   windDir,
   tideLabel,
+  readingHour,
   carpoolCount,
   onPress,
   onCarpoolPress,
@@ -570,6 +572,7 @@ function ResultCard({
   windSpeed: number;
   windDir: string;
   tideLabel: string;
+  readingHour: string;
   carpoolCount: number;
   onPress: () => void;
   onCarpoolPress: () => void;
@@ -591,6 +594,7 @@ function ResultCard({
             <Text style={resultStyles.windDir}>NŒUDS {windDir}</Text>
           </View>
         </View>
+        <Text style={resultStyles.readingHour}>RELEVÉ À {readingHour}</Text>
         <View style={resultStyles.factRow}>
           <View style={{ flex: 1 }}>
             <Text style={resultStyles.factLabel}>MARÉE</Text>
@@ -625,6 +629,7 @@ const resultStyles = StyleSheet.create({
   sub: { ...typography.body, color: colors.navy(0.5), marginTop: 3 },
   wind: { fontFamily: typography.h1.fontFamily, fontSize: 25, color: colors.navyBase },
   windDir: { ...typography.caption, color: colors.navy(0.5) },
+  readingHour: { ...typography.caption, color: colors.navy(0.4), textAlign: 'right', marginTop: 2, fontSize: 10 },
   factRow: { flexDirection: 'row', marginTop: 12, borderTopWidth: 1, borderTopColor: colors.navy(0.08), paddingTop: 10, gap: 8 },
   factLabel: { ...typography.caption, color: colors.navy(0.45) },
   factValue: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase, marginTop: 2 },

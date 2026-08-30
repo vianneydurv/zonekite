@@ -73,7 +73,9 @@ export default function SpotDetailScreen({ route }: Props) {
   );
 
   useEffect(() => {
-    const dateIso = localDateIso(new Date());
+    // Prévisions calées sur le jour recherché (sinon aujourd'hui si la
+    // fiche est ouverte hors d'une recherche, ex. depuis les favoris).
+    const dateIso = searchDate ?? localDateIso(new Date());
     const hourRange = searchStartHour != null && searchEndHour != null
       ? { start: searchStartHour, end: searchEndHour }
       : undefined;
@@ -82,11 +84,13 @@ export default function SpotDetailScreen({ route }: Props) {
       const hour = (h: HourCondition) => Number(h.hourLabel.replace('h', ''));
       const filtered = list.filter((h) => hour(h) >= DISPLAY_HOURS_START && hour(h) <= DISPLAY_HOURS_END);
       setHourly(filtered);
-      const nowHour = new Date().getHours();
-      const closest = filtered.findIndex((h) => hour(h) >= nowHour);
+      // Curseur pré-positionné sur le début du créneau recherché ; sinon sur
+      // l'heure actuelle. L'utilisateur reste libre de le déplacer ensuite.
+      const target = searchStartHour ?? new Date().getHours();
+      const closest = filtered.findIndex((h) => hour(h) >= target);
       setSelectedHourIndex(closest === -1 ? 0 : closest);
     });
-  }, [spot.id, searchStartHour, searchEndHour]);
+  }, [spot.id, searchDate, searchStartHour, searchEndHour]);
 
   const selected = hourly[selectedHourIndex] ?? null;
 

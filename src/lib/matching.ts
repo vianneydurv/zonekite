@@ -5,12 +5,16 @@ import { getTideState } from './tide';
 // Vrai moteur de matching : combine vent réel (weather.ts) et marée
 // approximée (tide.ts) pour produire le verdict affiché dans l'app.
 export interface SpotCondition {
-  verdict: 'BONNES CONDITIONS' | 'CONDITIONS MOYENNES' | 'NON NAVIGABLE';
+  verdict: 'MEILLEURES CONDITIONS ENTRE' | 'CONDITIONS MOYENNES' | 'NON NAVIGABLE';
   color: string;
   windSpeed: number;
   windDir: CompassDirection;
   tideLabel: string;
   window: string;
+  // Heure à laquelle windSpeed/windDir/tideLabel ont été relevés — le début
+  // du créneau recherché (« instant T » de la recherche), pas le milieu du
+  // meilleur sous-créneau (qui, lui, reste affiché dans `window`).
+  readingHour: string;
 }
 
 const COLOR_BON = '#17A673';
@@ -171,8 +175,15 @@ export async function getSpotCondition(
       windDir: 'N',
       tideLabel: 'Hors prévision',
       window: 'Hors prévision',
+      readingHour: '—',
     };
   }
+
+  // Relevé vent/marée affiché en gros : à l'instant T de la recherche, soit
+  // le début du créneau demandé (première heure de prévision disponible
+  // dans la plage recherchée) — pas le milieu du meilleur sous-créneau.
+  const rep = dayHours[0];
+  const tide = spot.mareeRef ? getTideState(spot.mareeRef, parseParisLocal(rep.time)) : null;
 
   const withLevel = dayHours.map((hour) => ({ hour, level: hourLevel(hour, spot) }));
   const order: Record<'bon' | 'moyen' | 'mauvais', number> = { bon: 0, moyen: 1, mauvais: 2 };
@@ -182,11 +193,9 @@ export async function getSpotCondition(
   }
 
   const window = withLevel.filter((x) => x.level === bestLevel);
-  const rep = window[Math.floor(window.length / 2)].hour;
-  const tide = spot.mareeRef ? getTideState(spot.mareeRef, parseParisLocal(rep.time)) : null;
 
   const verdict =
-    bestLevel === 'bon' ? 'BONNES CONDITIONS' : bestLevel === 'moyen' ? 'CONDITIONS MOYENNES' : 'NON NAVIGABLE';
+    bestLevel === 'bon' ? 'MEILLEURES CONDITIONS ENTRE' : bestLevel === 'moyen' ? 'CONDITIONS MOYENNES' : 'NON NAVIGABLE';
   const color = bestLevel === 'bon' ? COLOR_BON : bestLevel === 'moyen' ? COLOR_MOYEN : COLOR_MAUVAIS;
   const windowLabel =
     bestLevel === 'mauvais'
@@ -200,5 +209,6 @@ export async function getSpotCondition(
     windDir: rep.windDir,
     tideLabel: tide ? tideLabelFor(tide.heightFraction, tide.rising) : 'Marée inconnue',
     window: windowLabel,
+    readingHour: formatHour(rep.time),
   };
 }
