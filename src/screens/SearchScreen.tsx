@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   resultsFlatList: { flex: 1 },
   resultsList: { padding: 14 },
-  resultsListFooter: { height: 260 },
+  resultsListFooter: { height: 340 },
   resultsHeaderRow: { marginBottom: 10 },
   resultsCount: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
   modalBackdrop: {
