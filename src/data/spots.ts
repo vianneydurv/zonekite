@@ -17,6 +17,7 @@ export const spots: Spot[] = [
     lon: 1.6667,
     mareeRef: '2026-08-29T13:47:00+02:00', // ancre M2 : pleine mer Boulogne-sur-Mer
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/43/Wissant_-_Plage.jpg',
+    windguruId: 110,
     description:
       "Spot très venté (effet venturi entre Cap Blanc-Nez et Cap Gris-Nez). Fort marnage, vérifier le coefficient de marée.",
     ventMinNoeuds: 12,
@@ -35,6 +36,7 @@ export const spots: Spot[] = [
     lon: 1.75,
     mareeRef: '2026-08-29T13:47:00+02:00', // ancre M2 : pleine mer Boulogne-sur-Mer
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/50/00_0042_Strand_von_Sangatte.jpg',
+    windguruId: 48350,
     description:
       "Proche de Wissant, downwind possible Wissant → Sangatte le long des falaises. À compléter : vent/marée précis.",
     ventMinNoeuds: null,
@@ -51,6 +53,7 @@ export const spots: Spot[] = [
     lon: 1.6167,
     mareeRef: '2026-08-29T13:47:00+02:00', // ancre M2 : pleine mer Boulogne-sur-Mer
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/ce/Le_Crotoy_-_La_plage.jpg',
+    windguruId: 162,
     description:
       "Estuaire de la baie de Somme, plan d'eau flat/peu profond, idéal débutants et freestyle. Attention aux bancs de sable qui découvrent à marée descendante et au courant sortant.",
     ventMinNoeuds: null,
@@ -69,6 +72,7 @@ export const spots: Spot[] = [
     lon: 1.5667,
     mareeRef: '2026-08-29T13:47:00+02:00', // ancre M2 : pleine mer Boulogne-sur-Mer
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Plage_de_Berck_le_17_avril_2026.jpg',
+    windguruId: 1061,
     description:
       "Immense plage de sable (Grande Plage), spot très prisé de la communauté. Basse mer = plage immense dégagée, mi-marée = lagunes peu profondes idéales pour progresser. Vent de Sud-Ouest = belles vagues ; Nord à Nord-Ouest = freeride avec thermique. Vent de Nord parfois perturbé par les immeubles. Éviter les orientations Est (offshore).",
     ventMinNoeuds: null,
@@ -89,6 +93,7 @@ export const spots: Spot[] = [
     lon: -0.1333,
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5b/MF01.jpg',
+    windguruId: 109118,
     description:
       "Longue plage de sable, spot le plus connu de Normandie. Freeride à marée haute, freestyle à marée descendante.",
     ventMinNoeuds: 12,
@@ -105,6 +110,7 @@ export const spots: Spot[] = [
     lon: -1.8333,
     mareeRef: '2026-08-29T22:47:00+02:00', // ancre M2 : pleine mer Cherbourg
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/eb/SiouvillePlage.JPG',
+    windguruId: 186,
     description:
       "Spot de vagues (waveriding), grosses vagues possibles. Rafaleux quand le vent tourne au Sud.",
     ventMinNoeuds: 12,
@@ -121,6 +127,7 @@ export const spots: Spot[] = [
     lon: -0.4,
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Plage_de_Saint_Aubin_sur_Mer%2C_Calvados_-_fin_mars_2016.jpg',
+    windguruId: 3627,
     description: 'À compléter : vent/marée précis.',
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
@@ -136,6 +143,7 @@ export const spots: Spot[] = [
     lon: -0.9,
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ea/Omaha_Beach_2008_PD_03.JPG',
+    windguruId: 109136,
     description: 'À compléter : vent/marée précis.',
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
@@ -151,6 +159,7 @@ export const spots: Spot[] = [
     lon: -0.35,
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Plage_Colleville-Montgomery.JPG',
+    windguruId: 102826,
     description: 'À compléter : vent/marée précis.',
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
@@ -170,6 +179,7 @@ export const spots: Spot[] = [
     lon: -3.15,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Plage_de_kerhilio_a_erdeven_-_panoramio.jpg',
+    windguruId: 217532,
     description:
       "Spot le plus connu du secteur, à l'entrée nord de la presqu'île de Quiberon. Grande plage de sable, navigable à toutes marées (pas de rochers). Belles vagues à marée haute, plan d'eau plus flat à marée basse.",
     ventMinNoeuds: null,
@@ -186,6 +196,7 @@ export const spots: Spot[] = [
     lon: -3.14,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Morbihan_Plouharnel_Les_Sables_Blancs_Pen_Er_Le_Baie_De_Quiberon_25032016_-_panoramio.jpg',
+    windguruId: 48485,
     description:
       "Spot abrité côté baie de Quiberon, eau peu profonde façon lagon, idéal débutants/progression (pas de vagues, pas de courant).",
     ventMinNoeuds: null,
@@ -203,6 +214,7 @@ export const spots: Spot[] = [
     lon: -4.6059,
     mareeRef: '2026-08-29T19:57:00+02:00', // ancre M2 : pleine mer Roscoff
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/61/Dunes_de_Keremma.jpg',
+    windguruId: 194,
     description:
       "5 km de plage entre Kerurus et la baie du Kernic. Toutes orientations de vent possibles grâce à la géographie, optimal SSO à O et NE (thermique printemps). Jamais de vagues cassantes. Rochers affleurant à marée basse (surtout au nord). Spot labellisé FFVL, géré par l'association FKA.",
     ventMinNoeuds: null,
@@ -222,6 +234,7 @@ export const spots: Spot[] = [
     lon: -4.298,
     mareeRef: '2026-08-29T19:57:00+02:00', // ancre M2 : pleine mer Roscoff
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/02/2022-07-19-Baie_du_Kernic-0730.jpg',
+    windguruId: 194,
     description:
       "Lagon fermé qui protège des rafales, toutes orientations possibles, meilleur en O/NO. Baie vide à marée basse. Courant à l'embouchure nord à éviter.",
     ventMinNoeuds: null,
@@ -239,6 +252,7 @@ export const spots: Spot[] = [
     lon: -4.349,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/cf/Kitesurf%2C_Pointe_de_la_Torche_%289604495517%29.jpg',
+    windguruId: 218,
     description:
       "Spot de vagues le plus réputé de Bretagne, beach break pouvant atteindre 3 à 3,5 m. O/SO on-shore et E/SE praticables (le vent d'est lève les vagues). Chaos rocheux à la pointe, forte fréquentation surf.",
     ventMinNoeuds: null,
@@ -258,6 +272,7 @@ export const spots: Spot[] = [
     lon: -3.572,
     mareeRef: '2026-08-29T19:57:00+02:00', // ancre M2 : pleine mer Roscoff
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Plage_de_Saint-Michel-en-Gr%C3%A8ve_%2822%29_-_01.jpg',
+    windguruId: 500918,
     description:
       "Grande baie de Plestin-les-Grèves (3-4 km), toutes orientations possibles grâce à la géographie. À marée basse, la mer se retire jusqu'à 3 km (flat, pied partout). Croix de Mi-Lieue balisée, aucun rocher.",
     ventMinNoeuds: null,
@@ -276,6 +291,7 @@ export const spots: Spot[] = [
     lon: -3.515,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/48/Plage_de_guidel_et_fort_bloqu%C3%A9_-_panoramio.jpg',
+    windguruId: 48472,
     description:
       "Spot de vagues, meilleure orientation Sud (side). Rochers près du fort visibles à marée basse, immergés à marée haute. Géré par Guidel Kite Club.",
     ventMinNoeuds: null,
@@ -294,6 +310,7 @@ export const spots: Spot[] = [
     lon: -3.35,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/48/Plage_de_Gavres_-_panoramio.jpg',
+    windguruId: 48475,
     description:
       "Mer intérieure abritée près de Lorient, peu de tourisme (zone militaire). Attention à la route proche pour décollage/atterrissage.",
     ventMinNoeuds: null,
@@ -311,6 +328,7 @@ export const spots: Spot[] = [
     lon: -2.716,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Plage_du_Roaliguen_%28Sarzeau%2C56%29_-_01.jpg',
+    windguruId: 48496,
     description:
       "Spot principal de la presqu'île de Rhuys. Marée basse pour le flat, belle houle à marée haute. Zone de cours dédiée.",
     ventMinNoeuds: null,
@@ -328,6 +346,7 @@ export const spots: Spot[] = [
     lon: -2.685,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Plage_de_Penvins_%28Sarzeau%2C_56%29_-_01.jpg',
+    windguruId: 48497,
     description:
       "Pointe de la chapelle : lagune peu profonde (\"bassine\") praticable à marée haute côté Banastère, houle côté mer.",
     ventMinNoeuds: null,
@@ -349,6 +368,7 @@ export const spots: Spot[] = [
     lon: -1.43,
     mareeRef: '2026-08-29T18:22:00+02:00', // ancre M2 : pleine mer Les Sables-d'Olonne
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5d/Plage_centrale_de_la_Tranche-sur-Mer.jpg',
+    windguruId: 107827,
     description:
       "Plage utile par 12-28 nœuds. Baïnes et courants traversiers, zones balnéaires estivales à respecter. Meilleure période avril-octobre.",
     ventMinNoeuds: 12,
@@ -366,6 +386,7 @@ export const spots: Spot[] = [
     lon: -1.625,
     mareeRef: '2026-08-29T18:22:00+02:00', // ancre M2 : pleine mer Les Sables-d'Olonne
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2c/Pointe_du_Payr%C3%A9_%C3%A0_Talmont-Saint-HIalire.jpg',
+    windguruId: 240190,
     description:
       "Un des meilleurs spots de Vendée, embouchure du Payré près des Sables d'Olonne. Lagune abritée se formant à mi-marée/marée basse (bassines, pied partout), vagues côté océan.",
     ventMinNoeuds: null,
@@ -383,6 +404,7 @@ export const spots: Spot[] = [
     lon: -1.725,
     mareeRef: '2026-08-29T18:22:00+02:00', // ancre M2 : pleine mer Les Sables-d'Olonne
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/90/Plage_et_baie_des_Sables-d%27Olonne_%C3%A0_mar%C3%A9e_basse_%28juin_2023%29.JPG',
+    windguruId: 48510,
     description:
       "Zone de pratique 300 m de large, libre hors saison, balisée en juillet-août. Spot labellisé FFVL.",
     ventMinNoeuds: null,
@@ -400,6 +422,7 @@ export const spots: Spot[] = [
     lon: -2.147,
     mareeRef: '2026-08-29T18:22:00+02:00', // ancre M2 : pleine mer Les Sables-d'Olonne
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/7b/La_Barre-de-Monts_-_Plage_de_Fromentine_01.jpg',
+    windguruId: 48518,
     description:
       "Spot d'apprentissage par excellence, entre continent et Noirmoutier. Très clapoteux à marée haute. Forts courants du Passage de Fromentine, ne pas naviguer dans le chenal du port.",
     ventMinNoeuds: null,
@@ -419,6 +442,7 @@ export const spots: Spot[] = [
     lon: -2.221,
     mareeRef: '2026-08-29T18:22:00+02:00', // ancre M2 : pleine mer Les Sables-d'Olonne
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/86/Plage_de_Barb%C3%A2tre.JPG',
+    windguruId: 109521,
     description:
       "Pointe sud de l'île. Côté baie : eau plate par E/NE, de mi-marée à marée haute. Côté océan : marée descendante-basse par NW/W/SW. Fort marnage, rochers à marée basse côté pont, chenal de navigation interdit.",
     ventMinNoeuds: null,
@@ -437,6 +461,7 @@ export const spots: Spot[] = [
     lon: -2.15,
     mareeRef: '2026-08-29T18:22:00+02:00', // ancre M2 : pleine mer Les Sables-d'Olonne
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/37/184_-_Passage_du_Gois_-_Noirmoutier.jpg',
+    windguruId: 109523,
     description:
       "Baie entre le pont et la route submersible du Gois. Plan d'eau parfaitement plat, peu de courant sauf gros coefficient.",
     ventMinNoeuds: null,
@@ -459,6 +484,7 @@ export const spots: Spot[] = [
     lon: -1.088,
     mareeRef: '2026-08-29T18:20:00+02:00', // ancre M2 : pleine mer La Rochelle
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d9/Ch%C3%A2telaillon-Plage_La_grande_plage.jpg',
+    windguruId: 48530,
     description:
       "Grande baie de 3 km, spot familial, vue sur Fort Boyard. Souvent 20-25 nœuds l'été.",
     ventMinNoeuds: null,
@@ -477,6 +503,7 @@ export const spots: Spot[] = [
     lat: 46.128,
     lon: -1.115,
     mareeRef: '2026-08-29T18:20:00+02:00', // ancre M2 : pleine mer La Rochelle
+    windguruId: 48529,
     description:
       "Sud de La Rochelle, plage ~2 km, spot de slalom/freeride (side-shore). Chaussons indispensables (coquillages), parcs à huîtres.",
     ventMinNoeuds: null,
@@ -495,6 +522,7 @@ export const spots: Spot[] = [
     lon: -1.398,
     mareeRef: '2026-08-29T18:20:00+02:00', // ancre M2 : pleine mer La Rochelle
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/95/%C3%8Ele_de_R%C3%A9-FR-17-La_Couarde-plage_%C3%A0_mar%C3%A9e_basse.jpg',
+    windguruId: 48552,
     description:
       "La Couarde-sur-Mer. Plage abritée par une digue, peu de place à marée haute. Parcs à huîtres à proximité. Géré par l'association Aile de Ré.",
     ventMinNoeuds: null,
@@ -514,6 +542,7 @@ export const spots: Spot[] = [
     lon: -1.4,
     mareeRef: '2026-08-29T18:20:00+02:00', // ancre M2 : pleine mer La Rochelle
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/bd/Phare_de_Chassiron%2C_Ol%C3%A9ron.jpg',
+    windguruId: 109586,
     description:
       "Côte nord-ouest de l'île. Vagues shore-break à marée haute, flat rassurant à marée basse. Rochers au large, deux zones de baignade surveillée en saison.",
     ventMinNoeuds: null,
@@ -537,6 +566,7 @@ export const spots: Spot[] = [
     lon: -1.077,
     mareeRef: '2026-08-29T19:18:00+02:00', // ancre M2 : pleine mer Arcachon
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Gujan_Mestras_-_plages_de_La_Hume_-_2016_avr01.jpg',
+    windguruId: 500959,
     description:
       "Fond du bassin d'Arcachon. Plan d'eau flat, pied sur plus d'1 km. Zone réglementée, chenal interdit à la navigation kite.",
     ventMinNoeuds: null,
@@ -556,6 +586,7 @@ export const spots: Spot[] = [
     lon: -1.245,
     mareeRef: '2026-08-29T19:18:00+02:00', // ancre M2 : pleine mer Arcachon
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/45/La_Salie_Sud%2C_La_Teste-de-Buch%2C_France_%28Unsplash%29.jpg',
+    windguruId: 706567,
     description:
       "Océan, ~4 km au sud de la dune du Pyla. Lagon plat entre bancs de sable à marée basse (débutant), vagues pour experts après les bancs. Zone réservée FFVL.",
     ventMinNoeuds: null,
@@ -575,6 +606,7 @@ export const spots: Spot[] = [
     lon: -1.196,
     mareeRef: '2026-08-29T19:18:00+02:00', // ancre M2 : pleine mer Arcachon
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Lacanau-ocean_plage_2013%2802%29.JPG',
+    windguruId: 48561,
     description:
       "Thermique de NO (printemps/été). Difficile de passer la barre par vent d'ouest. Baïnes à marée basse.",
     ventMinNoeuds: null,
@@ -598,6 +630,7 @@ export const spots: Spot[] = [
     lon: -1.436,
     mareeRef: '2026-08-29T18:11:00+02:00', // ancre M2 : pleine mer Saint-Jean-de-Luz (Socoa)
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Kitesurf_at_Plage_des_Estagnots_in_Seignosse%2C_France.jpg',
+    windguruId: 48570,
     description:
       "Limite Hossegor/Seignosse. Dominants O et NO (houle atlantique), thermique N/NO l'été (se lève 16-17h). Vent de sud instable et rafaleux. Courants de baïne, zone kite dédiée signalée en été.",
     ventMinNoeuds: null,
@@ -615,6 +648,7 @@ export const spots: Spot[] = [
     lon: -1.527,
     mareeRef: '2026-08-29T18:11:00+02:00', // ancre M2 : pleine mer Saint-Jean-de-Luz (Socoa)
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c0/Plage_de_la_Madrague_2023.jpg',
+    windguruId: 48572,
     description:
       "Meilleures vagues par E/SE et marée basse ; vent d'E et de S = offshore/dangereux. Aérologie perturbée par les immeubles (pas pour débutants). Petite digue immergée selon marée.",
     ventMinNoeuds: null,
@@ -634,6 +668,7 @@ export const spots: Spot[] = [
     lon: -1.786,
     mareeRef: '2026-08-29T18:11:00+02:00', // ancre M2 : pleine mer Saint-Jean-de-Luz (Socoa)
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/39/Hendaye_-_plage_1.jpg',
+    windguruId: 48576,
     description:
       "Embouchure de la Bidassoa, frontière franco-espagnole, 3 km de plage. Fonctionne uniquement par vent de N à NE (tout vent à composante Sud est dangereux/offshore). Courants à l'embouchure.",
     ventMinNoeuds: null,
