@@ -33,7 +33,16 @@ const MONTH_LABELS = [
   'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
 ];
 const FORECAST_WINDOW_DAYS = 7;
-const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06h .. 22h
+// 06h00 .. 22h00 par quart d'heure
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6).flatMap((h) =>
+  [0, 0.25, 0.5, 0.75].filter((m) => h < 22 || m === 0).map((m) => h + m)
+);
+
+function formatHour(h: number): string {
+  const hh = Math.floor(h);
+  const mm = Math.round((h - hh) * 60);
+  return `${hh}h${String(mm).padStart(2, '0')}`;
+}
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -255,7 +264,7 @@ export default function SearchScreen() {
             </View>
             <View style={styles.summaryPill}>
               <Text style={styles.summaryLabel}>CRÉNEAU</Text>
-              <Text style={styles.summaryValue}>{startHour}h–{endHour}h</Text>
+              <Text style={styles.summaryValue}>{formatHour(startHour)}–{formatHour(endHour)}</Text>
             </View>
             <View style={styles.summaryPill}>
               <Text style={styles.summaryLabel}>DÉPART</Text>
@@ -340,14 +349,14 @@ export default function SearchScreen() {
             <Pressable style={styles.hourField} onPress={() => setPickerMode('start')}>
               <Text style={styles.fieldLabel}>DÉBUT</Text>
               <View style={styles.hourValueRow}>
-                <Text style={styles.fieldValue}>{startHour}h</Text>
+                <Text style={styles.fieldValue}>{formatHour(startHour)}</Text>
                 <Ionicons name="chevron-down" size={16} color={colors.neutral.textSecondary} />
               </View>
             </Pressable>
             <Pressable style={styles.hourField} onPress={() => setPickerMode('end')}>
               <Text style={styles.fieldLabel}>FIN</Text>
               <View style={styles.hourValueRow}>
-                <Text style={styles.fieldValue}>{endHour}h</Text>
+                <Text style={styles.fieldValue}>{formatHour(endHour)}</Text>
                 <Ionicons name="chevron-down" size={16} color={colors.neutral.textSecondary} />
               </View>
             </Pressable>
@@ -488,7 +497,7 @@ export default function SearchScreen() {
                     setPickerMode(null);
                   }}
                 >
-                  <Text style={styles.modalOptionText}>{item}h</Text>
+                  <Text style={styles.modalOptionText}>{formatHour(item)}</Text>
                 </Pressable>
               )}
             />

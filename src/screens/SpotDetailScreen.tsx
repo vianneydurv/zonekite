@@ -14,6 +14,7 @@ import {
   type SpotCondition,
 } from '../lib/matching';
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
+import { spotPhotos } from '../data/spotPhotos';
 import type { Spot } from '../types/spot';
 
 // Plage horaire pertinente pour le kite (cohérente avec la recherche).
@@ -35,7 +36,9 @@ interface Props {
 }
 
 function formatHourNumber(h: number): string {
-  return `${h}h00`;
+  const hh = Math.floor(h);
+  const mm = Math.round((h - hh) * 60);
+  return `${hh}h${String(mm).padStart(2, '0')}`;
 }
 
 const TIDE_LABELS: Record<string, string> = {
@@ -107,8 +110,8 @@ export default function SpotDetailScreen({ route }: Props) {
   const hero = (
     <View>
       <View style={styles.hero}>
-        {spot.photoUrl ? (
-          <Image source={{ uri: spot.photoUrl }} style={styles.heroImage} resizeMode="cover" />
+        {spotPhotos[spot.id] ? (
+          <Image source={spotPhotos[spot.id]} style={styles.heroImage} resizeMode="cover" />
         ) : (
           <View style={styles.heroPlaceholder}>
             <Ionicons name="image-outline" size={32} color={colors.navy(0.3)} />
