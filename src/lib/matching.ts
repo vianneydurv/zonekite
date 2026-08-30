@@ -76,6 +76,25 @@ function directionMatches(favorables: CompassDirection[] | null, dir: CompassDir
   });
 }
 
+const COMPASS_DEGREES: Record<CompassDirection, number> = {
+  N: 0,
+  NE: 45,
+  E: 90,
+  SE: 135,
+  S: 180,
+  SW: 225,
+  W: 270,
+  NW: 315,
+};
+
+// Position (0-100) sur une barre horizontale Ouest→Est : projection du
+// vent sur l'axe est-ouest (Ouest à gauche, Nord/Sud au centre, Est à
+// droite), plus parlant qu'un repère fixe pour une direction de vent.
+export function directionToBarPercent(dir: CompassDirection): number {
+  const rad = (COMPASS_DEGREES[dir] * Math.PI) / 180;
+  return ((Math.sin(rad) + 1) / 2) * 100;
+}
+
 function tideLabelFor(heightFraction: number, rising: boolean): string {
   if (heightFraction >= 0.85) return 'Pleine mer';
   if (heightFraction <= 0.15) return 'Basse mer';
@@ -125,9 +144,24 @@ export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<
     });
 }
 
-export async function getSpotCondition(spot: Spot, dateIso: string): Promise<SpotCondition> {
+export interface HourRange {
+  start: number;
+  end: number;
+}
+
+export async function getSpotCondition(
+  spot: Spot,
+  dateIso: string,
+  hourRange?: HourRange
+): Promise<SpotCondition> {
   const forecast = await getWindForecast(spot);
-  const dayHours = forecast.filter((h) => h.time.startsWith(dateIso));
+  let dayHours = forecast.filter((h) => h.time.startsWith(dateIso));
+  if (hourRange) {
+    dayHours = dayHours.filter((h) => {
+      const hh = Number(h.time.slice(11, 13));
+      return hh >= hourRange.start && hh <= hourRange.end;
+    });
+  }
 
   if (dayHours.length === 0) {
     return {

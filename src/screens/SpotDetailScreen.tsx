@@ -6,6 +6,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
 import {
+  directionToBarPercent,
   getHourlyConditions,
   getSpotCondition,
   localDateIso,
@@ -20,6 +21,7 @@ const DISPLAY_HOURS_START = 6;
 const DISPLAY_HOURS_END = 22;
 // Écart rafale - vent moyen (nds) à partir duquel on considère le vent rafaleux.
 const GUST_THRESHOLD_KN = 6;
+const LEVEL_COLORS = { bon: '#17A673', moyen: '#F0A020', mauvais: '#E04B3C' };
 
 interface Props {
   route: {
@@ -69,7 +71,10 @@ export default function SpotDetailScreen({ route }: Props) {
 
   useEffect(() => {
     const dateIso = localDateIso(new Date());
-    getSpotCondition(spot, dateIso).then(setCondition);
+    const hourRange = searchStartHour != null && searchEndHour != null
+      ? { start: searchStartHour, end: searchEndHour }
+      : undefined;
+    getSpotCondition(spot, dateIso, hourRange).then(setCondition);
     getHourlyConditions(spot, dateIso).then((list) => {
       const hour = (h: HourCondition) => Number(h.hourLabel.replace('h', ''));
       const filtered = list.filter((h) => hour(h) >= DISPLAY_HOURS_START && hour(h) <= DISPLAY_HOURS_END);
@@ -78,7 +83,7 @@ export default function SpotDetailScreen({ route }: Props) {
       const closest = filtered.findIndex((h) => hour(h) >= nowHour);
       setSelectedHourIndex(closest === -1 ? 0 : closest);
     });
-  }, [spot.id]);
+  }, [spot.id, searchStartHour, searchEndHour]);
 
   const selected = hourly[selectedHourIndex] ?? null;
 
@@ -89,6 +94,15 @@ export default function SpotDetailScreen({ route }: Props) {
     : 0;
   const gustDelta = selected ? selected.windGustKn - selected.windSpeedKn : 0;
   const isGusty = gustDelta >= GUST_THRESHOLD_KN;
+  const windDirPct = selected ? directionToBarPercent(selected.windDir) : 50;
+  const idealDirZone = (() => {
+    const favorables = spot.directionsFavorables;
+    if (!favorables || favorables.length === 0) return { left: 35, width: 40 };
+    const pcts = favorables.map(directionToBarPercent);
+    const min = Math.min(...pcts);
+    const max = Math.max(...pcts);
+    return { left: min, width: Math.max(max - min, 6) };
+  })();
 
   const hero = (
     <View>
@@ -151,26 +165,29 @@ export default function SpotDetailScreen({ route }: Props) {
           </View>
 
           <View style={styles.sliderCard}>
-            <Text style={styles.sliderHourLabel}>{selected.hourLabel}</Text>
-            <Slider
-              style={styles.slider}
-              minimumValue={0}
-              maximumValue={Math.max(hourly.length - 1, 0)}
-              step={1}
-              value={selectedHourIndex}
-              onValueChange={setSelectedHourIndex}
-              minimumTrackTintColor={colors.blue}
-              maximumTrackTintColor={colors.neutral.border}
-              thumbTintColor={colors.blue}
-            />
-            <View style={styles.sliderTicksRow}>
-              {hourly.map((h, i) => (
-                <View
-                  key={i}
-                  style={[styles.sliderTick, i === selectedHourIndex && styles.sliderTickActive]}
-                />
-              ))}
+            <View style={[styles.sliderHourPill, { backgroundColor: LEVEL_COLORS[selected.level] }]}>
+              <Text style={styles.sliderHourPillText}>{selected.hourLabel}</Text>
             </View>
+
+            <View style={styles.sliderTrackWrap}>
+              <View style={styles.sliderHeatmap}>
+                {hourly.map((h, i) => (
+                  <View key={i} style={[styles.sliderHeatmapSegment, { backgroundColor: LEVEL_COLORS[h.level] }]} />
+                ))}
+              </View>
+              <Slider
+                style={styles.slider}
+                minimumValue={0}
+                maximumValue={Math.max(hourly.length - 1, 0)}
+                step={1}
+                value={selectedHourIndex}
+                onValueChange={setSelectedHourIndex}
+                minimumTrackTintColor="transparent"
+                maximumTrackTintColor="transparent"
+                thumbTintColor={colors.neutral.white}
+              />
+            </View>
+
             <View style={styles.sliderEdgeRow}>
               <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_START}h</Text>
               <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_END}h</Text>
@@ -204,8 +221,18 @@ export default function SpotDetailScreen({ route }: Props) {
               </Text>
             </View>
             <View style={styles.barTrack}>
-              <View style={[styles.barIdealZone, { left: '35%', width: '40%' }]} />
-              <View style={[styles.barMarker, { left: '50%' }]} />
+              <View
+                style={[
+                  styles.barIdealZone,
+                  { left: `${idealDirZone.left}%`, width: `${idealDirZone.width}%` },
+                ]}
+              />
+              <View style={[styles.barMarker, { left: `${windDirPct}%` }]} />
+            </View>
+            <View style={styles.dirScaleRow}>
+              <Text style={styles.dirScaleLabel}>O</Text>
+              <Text style={styles.dirScaleLabel}>N/S</Text>
+              <Text style={styles.dirScaleLabel}>E</Text>
             </View>
           </View>
 
@@ -341,18 +368,34 @@ const styles = StyleSheet.create({
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 },
   cardEyebrow: { ...typography.caption, color: colors.navy(0.55), letterSpacing: 1 },
   sliderCard: {
-    backgroundColor: colors.neutral.background,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
     alignItems: 'center',
+    marginBottom: 16,
   },
-  sliderHourLabel: { fontFamily: typography.h1.fontFamily, fontSize: 26, color: colors.blue, marginBottom: 2 },
+  sliderHourPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+  sliderHourPillText: {
+    fontFamily: typography.h1.fontFamily,
+    fontSize: 20,
+    color: colors.neutral.white,
+    letterSpacing: 0.3,
+  },
+  sliderTrackWrap: { width: '100%', height: 32, justifyContent: 'center' },
+  sliderHeatmap: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  sliderHeatmapSegment: { flex: 1 },
   slider: { width: '100%', height: 32 },
-  sliderTicksRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 10, marginTop: -6 },
-  sliderTick: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.navy(0.2) },
-  sliderTickActive: { backgroundColor: colors.blue, width: 4, height: 4, borderRadius: 2 },
-  sliderEdgeRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 6 },
+  sliderEdgeRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 4 },
   sliderEdgeLabel: { ...typography.caption, color: colors.navy(0.4) },
   windguruButton: {
     flexDirection: 'row',
@@ -377,6 +420,8 @@ const styles = StyleSheet.create({
   barIdealZoneTide: { backgroundColor: '#FBE7C4' },
   barMarker: { position: 'absolute', top: -3, width: 5, height: 14, borderRadius: 3, backgroundColor: '#17A673' },
   barMarkerTide: { backgroundColor: '#F0A020' },
+  dirScaleRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  dirScaleLabel: { ...typography.caption, fontSize: 9.5, color: colors.navy(0.35) },
   cardFootnote: { ...typography.body, color: colors.navy(0.65), marginTop: 4, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.navy(0.07) },
   description: { ...typography.body, color: colors.navy(0.8), marginTop: 8, lineHeight: 19 },
   warningBox: { backgroundColor: colors.accent[100], borderRadius: 12, padding: 14, marginTop: 13 },

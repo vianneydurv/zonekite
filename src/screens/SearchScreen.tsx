@@ -225,7 +225,9 @@ export default function SearchScreen() {
     let cancelled = false;
     setLoadingResults(true);
     Promise.all(
-      candidateSpots.map((spot) => getSpotCondition(spot, dateIso).then((condition) => ({ spot, condition })))
+      candidateSpots.map((spot) =>
+        getSpotCondition(spot, dateIso, { start: startHour, end: endHour }).then((condition) => ({ spot, condition }))
+      )
     ).then((list) => {
       if (cancelled) return;
       list.sort((a, b) => VERDICT_ORDER[a.condition.verdict] - VERDICT_ORDER[b.condition.verdict]);
@@ -235,7 +237,7 @@ export default function SearchScreen() {
     return () => {
       cancelled = true;
     };
-  }, [dateIso, searched, distanceMaxKm, spotDistances]);
+  }, [dateIso, searched, distanceMaxKm, spotDistances, startHour, endHour]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
