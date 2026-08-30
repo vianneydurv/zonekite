@@ -209,6 +209,12 @@ export default function SearchScreen() {
   const [results, setResults] = useState<{ spot: Spot; condition: SpotCondition }[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const mapRef = useRef<WebView>(null);
+  // Espace après le dernier résultat calé dynamiquement (hauteur de la liste
+  // visible - hauteur de la dernière carte) pour que le défilement s'arrête
+  // pile quand le haut de la dernière carte atteint le bas de la carte OSM.
+  const [listViewportHeight, setListViewportHeight] = useState(0);
+  const [lastItemHeight, setLastItemHeight] = useState(0);
+  const footerHeight = Math.max(0, listViewportHeight - lastItemHeight);
 
   const flyToSpot = useCallback((spot: Spot) => {
     mapRef.current?.injectJavaScript(
@@ -442,6 +448,7 @@ export default function SearchScreen() {
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
             contentContainerStyle={styles.resultsList}
+            onLayout={(e) => setListViewportHeight(e.nativeEvent.layout.height)}
             ListHeaderComponent={
               <View style={styles.resultsHeaderRow}>
                 <Text style={styles.resultsCount}>
@@ -451,28 +458,36 @@ export default function SearchScreen() {
                 </Text>
               </View>
             }
-            renderItem={({ item }) => (
-              <ResultCard
-                spot={item.spot}
-                verdict={item.condition.verdict}
-                color={item.condition.color}
-                window={item.condition.window}
-                windSpeed={item.condition.windSpeed}
-                windDir={item.condition.windDir}
-                tideLabel={item.condition.tideLabel}
-                carpoolCount={carpoolCounts[item.spot.id] ?? 0}
-                onPress={() =>
-                  navigation.navigate('SpotDetail', {
-                    spot: item.spot,
-                    searchDate: dateIso,
-                    searchStartHour: startHour,
-                    searchEndHour: endHour,
-                  })
+            renderItem={({ item, index }) => (
+              <View
+                onLayout={
+                  index === results.length - 1
+                    ? (e) => setLastItemHeight(e.nativeEvent.layout.height)
+                    : undefined
                 }
-                onCarpoolPress={() => navigation.getParent()?.navigate('Carpool')}
-              />
+              >
+                <ResultCard
+                  spot={item.spot}
+                  verdict={item.condition.verdict}
+                  color={item.condition.color}
+                  window={item.condition.window}
+                  windSpeed={item.condition.windSpeed}
+                  windDir={item.condition.windDir}
+                  tideLabel={item.condition.tideLabel}
+                  carpoolCount={carpoolCounts[item.spot.id] ?? 0}
+                  onPress={() =>
+                    navigation.navigate('SpotDetail', {
+                      spot: item.spot,
+                      searchDate: dateIso,
+                      searchStartHour: startHour,
+                      searchEndHour: endHour,
+                    })
+                  }
+                  onCarpoolPress={() => navigation.getParent()?.navigate('Carpool')}
+                />
+              </View>
             )}
-            ListFooterComponent={<View style={styles.resultsListFooter} />}
+            ListFooterComponent={<View style={{ height: footerHeight }} />}
           />
         </View>
       )}
@@ -745,7 +760,6 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   resultsFlatList: { flex: 1 },
   resultsList: { padding: 14 },
-  resultsListFooter: { height: 340 },
   resultsHeaderRow: { marginBottom: 10 },
   resultsCount: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
   modalBackdrop: {
