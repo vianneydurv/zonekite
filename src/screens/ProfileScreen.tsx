@@ -7,6 +7,7 @@ import { getProfile } from '../lib/profileStorage';
 import { signOut } from '../lib/auth';
 import { getTrips } from '../lib/tripsStorage';
 import { getRequestedTripIds } from '../lib/rideRequests';
+import { localDateIso } from '../lib/matching';
 import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
 import { NIVEAU_LABELS, type Profile } from '../types/profile';
@@ -32,7 +33,9 @@ export default function ProfileScreen() {
       getFavoriteIds().then((ids) => setFavoriteCount(ids.length));
 
       Promise.all([getTrips(), getRequestedTripIds(), getProfile()]).then(
-        ([trips, requestedIds, p]) => {
+        ([allTrips, requestedIds, p]) => {
+          const todayIso = localDateIso(new Date());
+          const trips = allTrips.filter((t) => t.date >= todayIso);
           const mine = trips.filter((t) => t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id));
           setCarpoolCount(mine.length);
 

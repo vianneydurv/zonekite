@@ -10,5 +10,10 @@ export async function getTrips(): Promise<Trajet[]> {
 }
 
 export async function addTrip(trip: Trajet): Promise<void> {
-  await setDoc(doc(tripsCollection, trip.id), trip);
+  // Firestore refuse d'écrire un champ valant `undefined` (ex. véhicule ou
+  // heure de retour laissés vides) : on les retire avant l'envoi.
+  const clean = Object.fromEntries(
+    Object.entries(trip).filter(([, value]) => value !== undefined)
+  ) as unknown as Trajet;
+  await setDoc(doc(tripsCollection, trip.id), clean);
 }
