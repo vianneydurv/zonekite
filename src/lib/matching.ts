@@ -111,17 +111,28 @@ function tideLabelFor(heightFraction: number, rising: boolean): string {
 export const DEFAULT_WIND_MIN_KN = 12;
 export const DEFAULT_WIND_MAX_KN = 30;
 
-function hourLevel(hour: HourlyWind, spot: Spot): 'bon' | 'moyen' | 'mauvais' {
+interface HourEvaluation {
+  level: 'bon' | 'moyen' | 'mauvais';
+  windOk: boolean;
+  dirOk: boolean;
+  tideOk: boolean;
+}
+
+function evaluateHour(hour: HourlyWind, spot: Spot): HourEvaluation {
   const min = spot.ventMinNoeuds ?? DEFAULT_WIND_MIN_KN;
   const max = spot.ventMaxNoeuds ?? DEFAULT_WIND_MAX_KN;
-  if (hour.windSpeedKn < min || hour.windSpeedKn > max) return 'mauvais';
-
+  const windOk = hour.windSpeedKn >= min && hour.windSpeedKn <= max;
   const dirOk = directionMatches(spot.directionsFavorables, hour.windDir);
   const tideOk = spot.mareeRef
     ? tideMatches(spot.contrainteMaree, getTideState(spot.mareeRef, parseParisLocal(hour.time)).heightFraction)
     : true;
 
-  return dirOk && tideOk ? 'bon' : 'moyen';
+  const level: 'bon' | 'moyen' | 'mauvais' = !windOk ? 'mauvais' : dirOk && tideOk ? 'bon' : 'moyen';
+  return { level, windOk, dirOk, tideOk };
+}
+
+function hourLevel(hour: HourlyWind, spot: Spot): 'bon' | 'moyen' | 'mauvais' {
+  return evaluateHour(hour, spot).level;
 }
 
 function formatHour(naiveIso: string): string {
@@ -135,6 +146,11 @@ export interface HourCondition {
   windDir: CompassDirection;
   tideLabel: string;
   level: 'bon' | 'moyen' | 'mauvais';
+  // Détail par critère — pour signaler ce qui bloque la navigabilité dans
+  // l'UI (ex. vent OK mais marée hors fenêtre => marée en rouge).
+  windOk: boolean;
+  dirOk: boolean;
+  tideOk: boolean;
 }
 
 export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<HourCondition[]> {
@@ -143,13 +159,17 @@ export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<
     .filter((h) => h.time.startsWith(dateIso))
     .map((hour) => {
       const tide = spot.mareeRef ? getTideState(spot.mareeRef, parseParisLocal(hour.time)) : null;
+      const evaluation = evaluateHour(hour, spot);
       return {
         hourLabel: formatHour(hour.time),
         windSpeedKn: hour.windSpeedKn,
         windGustKn: hour.windGustKn,
         windDir: hour.windDir,
         tideLabel: tide ? tideLabelFor(tide.heightFraction, tide.rising) : 'Marée inconnue',
-        level: hourLevel(hour, spot),
+        level: evaluation.level,
+        windOk: evaluation.windOk,
+        dirOk: evaluation.dirOk,
+        tideOk: evaluation.tideOk,
       };
     });
 }

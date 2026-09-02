@@ -174,8 +174,13 @@ export default function SpotDetailScreen({ route }: Props) {
           </View>
 
           <View style={styles.sliderCard}>
-            <View style={[styles.sliderHourPill, { backgroundColor: LEVEL_COLORS[selected.level] }]}>
-              <Text style={styles.sliderHourPillText}>{selected.hourLabel}</Text>
+            <View style={styles.sliderHourRow}>
+              <View style={[styles.sliderHourPill, { backgroundColor: LEVEL_COLORS[selected.level] }]}>
+                <Text style={styles.sliderHourPillText}>{selected.hourLabel}</Text>
+              </View>
+              <Text style={[styles.navigableText, { color: LEVEL_COLORS[selected.level] }]}>
+                {selected.level === 'mauvais' ? 'NON NAVIGABLE' : 'NAVIGABLE'}
+              </Text>
             </View>
 
             <View style={styles.sliderTrackWrap}>
@@ -206,7 +211,9 @@ export default function SpotDetailScreen({ route }: Props) {
           <View style={styles.barRow}>
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Force du vent</Text>
-              <Text style={styles.barValue}>{selected.windSpeedKn} nds</Text>
+              <Text style={[styles.barValue, !selected.windOk && styles.barValueBlocking]}>
+                {selected.windSpeedKn} nds
+              </Text>
             </View>
             <View style={styles.barTrack}>
               <View
@@ -222,7 +229,7 @@ export default function SpotDetailScreen({ route }: Props) {
           <View style={styles.barRow}>
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Direction</Text>
-              <Text style={styles.barValue}>
+              <Text style={[styles.barValue, !selected.dirOk && styles.barValueBlocking]}>
                 {selected.windDir}{' '}
                 <Text style={styles.barValueMuted}>
                   / idéal {spot.directionsFavorables?.join('–') ?? '—'}
@@ -248,7 +255,9 @@ export default function SpotDetailScreen({ route }: Props) {
           <View style={styles.barRow}>
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Marée</Text>
-              <Text style={styles.barValue}>{selected.tideLabel}</Text>
+              <Text style={[styles.barValue, !selected.tideOk && styles.barValueBlocking]}>
+                {selected.tideLabel}
+              </Text>
             </View>
             <View style={styles.barTrack}>
               <View style={[styles.barIdealZone, styles.barIdealZoneTide, { left: '20%', width: '46%' }]} />
@@ -380,11 +389,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  sliderHourRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  navigableText: { fontFamily: typography.h3.fontFamily, fontSize: 12, letterSpacing: 0.6 },
   sliderHourPill: {
     paddingHorizontal: 18,
     paddingVertical: 6,
     borderRadius: 20,
-    marginBottom: 10,
   },
   sliderHourPillText: {
     fontFamily: typography.h1.fontFamily,
@@ -420,6 +430,7 @@ const styles = StyleSheet.create({
   windguruButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.blue, letterSpacing: 0.4 },
   barRow: { marginBottom: 12 },
   barValueWarning: { color: '#D9530A' },
+  barValueBlocking: { color: LEVEL_COLORS.mauvais },
   barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
   barLabel: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
   barValue: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
