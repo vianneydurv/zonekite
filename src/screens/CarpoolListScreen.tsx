@@ -6,6 +6,7 @@ import type { CarpoolStackParamList } from '../navigation/CarpoolStackNavigator'
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
 import { getProfile } from '../lib/profileStorage';
+import { localDateIso } from '../lib/matching';
 import type { Trajet } from '../types/trajet';
 import TripCard from '../components/TripCard';
 
@@ -28,9 +29,10 @@ export default function CarpoolListScreen({ navigation }: Props) {
     }, [])
   );
 
-  const visibleTrips = trips.filter((t) =>
-    mode === 'offering' ? t.conducteurPrenom === prenom : t.conducteurPrenom !== prenom
-  );
+  const todayIso = localDateIso(new Date());
+  const visibleTrips = trips
+    .filter((t) => t.date >= todayIso)
+    .filter((t) => (mode === 'offering' ? t.conducteurPrenom === prenom : t.conducteurPrenom !== prenom));
 
   const todayLabel = capitalize(new Date().toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }));
 
