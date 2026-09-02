@@ -6,6 +6,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
 import {
+  DEFAULT_WIND_MAX_KN,
+  DEFAULT_WIND_MIN_KN,
   directionToBarPercent,
   getHourlyConditions,
   getSpotCondition,
@@ -94,8 +96,8 @@ export default function SpotDetailScreen({ route }: Props) {
 
   const selected = hourly[selectedHourIndex] ?? null;
 
-  const windMin = spot.ventMinNoeuds ?? 12;
-  const windMax = spot.ventMaxNoeuds ?? 30;
+  const windMin = spot.ventMinNoeuds ?? DEFAULT_WIND_MIN_KN;
+  const windMax = spot.ventMaxNoeuds ?? DEFAULT_WIND_MAX_KN;
   const windPct = selected
     ? Math.max(0, Math.min(100, ((selected.windSpeedKn - windMin) / (windMax - windMin)) * 100))
     : 0;

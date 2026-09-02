@@ -105,9 +105,15 @@ function tideLabelFor(heightFraction: number, rising: boolean): string {
   return rising ? 'Mi-marée montante' : 'Mi-marée descendante';
 }
 
+// Plage de vent par défaut quand le spot n'a pas encore ses seuils propres
+// renseignés (cas de la majorité des spots "à compléter") — sans ça, un
+// vent de 3 nds passait pour "bon" faute de plafond/plancher à comparer.
+export const DEFAULT_WIND_MIN_KN = 12;
+export const DEFAULT_WIND_MAX_KN = 30;
+
 function hourLevel(hour: HourlyWind, spot: Spot): 'bon' | 'moyen' | 'mauvais' {
-  const min = spot.ventMinNoeuds ?? 0;
-  const max = spot.ventMaxNoeuds ?? Infinity;
+  const min = spot.ventMinNoeuds ?? DEFAULT_WIND_MIN_KN;
+  const max = spot.ventMaxNoeuds ?? DEFAULT_WIND_MAX_KN;
   if (hour.windSpeedKn < min || hour.windSpeedKn > max) return 'mauvais';
 
   const dirOk = directionMatches(spot.directionsFavorables, hour.windDir);
