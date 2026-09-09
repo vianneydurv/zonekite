@@ -6,7 +6,7 @@ import { colors, typography } from '../theme';
 
 export type ForumStackParamList = {
   ForumList: undefined;
-  CreatePost: undefined;
+  CreatePost: { postId?: string } | undefined;
   PostDetail: { postId: string };
 };
 
@@ -23,7 +23,11 @@ export default function ForumStackNavigator() {
       }}
     >
       <Stack.Screen name="ForumList" component={ForumListScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'Nouveau sujet' }} />
+      <Stack.Screen
+        name="CreatePost"
+        component={CreatePostScreen}
+        options={({ route }) => ({ title: route.params?.postId ? 'Modifier le sujet' : 'Nouveau sujet' })}
+      />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );

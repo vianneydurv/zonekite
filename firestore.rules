@@ -22,19 +22,38 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.conducteurUid == request.auth.uid;
     }
 
-    // Sujets de forum : visibles par tous les membres connectés, création
-    // libre. La mise à jour n'est autorisée que pour ajouter un commentaire :
-    // seul le champ "commentaires" peut changer, il ne peut que grandir d'un
-    // élément, et les commentaires déjà présents doivent rester intacts —
-    // impossible donc de réécrire le titre/contenu/auteur d'un post, ou de
-    // modifier/supprimer un commentaire existant (y compris le sien).
+    // Sujets de forum : visibles par tous les membres connectés, créés
+    // uniquement par leur auteur (auteurUid). Le propriétaire peut éditer
+    // titre/contenu/tag ou supprimer son post, sans le réattribuer à
+    // quelqu'un d'autre. N'importe quel membre peut en revanche faire
+    // avancer commentCount d'une unité en postant une réponse (voir la
+    // sous-collection comments ci-dessous, seule source des commentaires
+    // pour les nouveaux posts).
     match /forumPosts/{postId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.auteurUid == request.auth.uid;
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentaires'])
-        && request.resource.data.commentaires.size() == resource.data.commentaires.size() + 1
-        && request.resource.data.commentaires.hasAll(resource.data.commentaires);
+        && (
+          (resource.data.auteurUid == request.auth.uid
+            && request.resource.data.auteurUid == resource.data.auteurUid)
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+            // .get(key, 0) : les posts créés avant l'introduction de
+            // commentCount n'ont pas ce champ, on part de 0 pour eux.
+            && request.resource.data.commentCount == resource.data.get('commentCount', 0) + 1)
+        );
+      allow delete: if request.auth != null && resource.data.auteurUid == request.auth.uid;
+
+      // Réponses à un sujet : lisibles par tous les membres connectés,
+      // créées par leur auteur pour lui-même, éditées/supprimées
+      // uniquement par ce même auteur (auteurUid), sans réattribution.
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.auteurUid == request.auth.uid;
+        allow update: if request.auth != null
+          && resource.data.auteurUid == request.auth.uid
+          && request.resource.data.auteurUid == resource.data.auteurUid;
+        allow delete: if request.auth != null && resource.data.auteurUid == request.auth.uid;
+      }
     }
 
     // Demandes de place en covoiturage : lisibles par tous les membres

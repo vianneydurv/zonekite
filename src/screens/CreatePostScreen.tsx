@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ForumStackParamList } from '../navigation/ForumStackNavigator';
 import { colors, typography } from '../theme';
-import { addPost } from '../lib/forumStorage';
+import { addPost, getPosts, updatePost } from '../lib/forumStorage';
 import { getProfile } from '../lib/profileStorage';
 import type { ForumPost, ForumTag } from '../types/forum';
 
@@ -11,27 +11,49 @@ type Props = NativeStackScreenProps<ForumStackParamList, 'CreatePost'>;
 
 const TAGS: ForumTag[] = ['SESSIONS', 'MATÉRIEL', 'SPOTS'];
 
-export default function CreatePostScreen({ navigation }: Props) {
+export default function CreatePostScreen({ navigation, route }: Props) {
+  const editingPostId = route.params?.postId;
+
   const [titre, setTitre] = useState('');
   const [contenu, setContenu] = useState('');
   const [tag, setTag] = useState<ForumTag>('SESSIONS');
+  const [loaded, setLoaded] = useState(!editingPostId);
+
+  useEffect(() => {
+    if (!editingPostId) return;
+    getPosts().then((posts) => {
+      const post = posts.find((p) => p.id === editingPostId);
+      if (post) {
+        setTitre(post.titre);
+        setContenu(post.contenu);
+        setTag(post.tag);
+      }
+      setLoaded(true);
+    });
+  }, []);
 
   const canSubmit = titre.trim().length > 0 && contenu.trim().length > 0;
 
+  if (!loaded) return null;
+
   async function handleSubmit() {
     if (!canSubmit) return;
-    const profile = await getProfile();
-    const post: ForumPost = {
-      id: `${Date.now()}`,
-      auteurPrenom: profile?.prenom ?? 'Moi',
-      auteurPhotoUri: profile?.photoUri,
-      titre: titre.trim(),
-      contenu: contenu.trim(),
-      date: new Date().toISOString(),
-      tag,
-      commentaires: [],
-    };
-    await addPost(post);
+
+    if (editingPostId) {
+      await updatePost(editingPostId, { titre: titre.trim(), contenu: contenu.trim(), tag });
+    } else {
+      const profile = await getProfile();
+      const post: ForumPost = {
+        id: `${Date.now()}`,
+        auteurPrenom: profile?.prenom ?? 'Moi',
+        auteurPhotoUri: profile?.photoUri,
+        titre: titre.trim(),
+        contenu: contenu.trim(),
+        date: new Date().toISOString(),
+        tag,
+      };
+      await addPost(post);
+    }
     navigation.goBack();
   }
 
@@ -75,7 +97,7 @@ export default function CreatePostScreen({ navigation }: Props) {
         disabled={!canSubmit}
         onPress={handleSubmit}
       >
-        <Text style={styles.submitButtonText}>PUBLIER</Text>
+        <Text style={styles.submitButtonText}>{editingPostId ? 'ENREGISTRER' : 'PUBLIER'}</Text>
       </Pressable>
     </View>
   );

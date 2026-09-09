@@ -20,6 +20,7 @@ function formatRelative(iso: string) {
 }
 
 export default function PostCard({ post, onPress }: { post: ForumPost; onPress?: () => void }) {
+  const commentCount = post.commentCount ?? post.commentaires?.length ?? 0;
   return (
     <Pressable style={styles.row} onPress={onPress}>
       <View style={[styles.avatar, { backgroundColor: avatarColor(post.auteurPrenom) }]} />
@@ -34,7 +35,7 @@ export default function PostCard({ post, onPress }: { post: ForumPost; onPress?:
             <Text style={styles.tagText}>{post.tag}</Text>
           </View>
           <Text style={styles.replies}>
-            {post.commentaires.length} réponse{post.commentaires.length > 1 ? 's' : ''}
+            {commentCount} réponse{commentCount > 1 ? 's' : ''}
           </Text>
         </View>
       </View>
