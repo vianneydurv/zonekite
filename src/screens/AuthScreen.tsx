@@ -12,24 +12,7 @@ import {
   View,
 } from 'react-native';
 import { colors, typography } from '../theme';
-import { resetPassword, signIn, signUp } from '../lib/auth';
-
-function authErrorMessage(code: string): string {
-  switch (code) {
-    case 'auth/invalid-email':
-      return 'Adresse email invalide.';
-    case 'auth/email-already-in-use':
-      return 'Un compte existe déjà avec cet email.';
-    case 'auth/weak-password':
-      return 'Le mot de passe doit contenir au moins 6 caractères.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'Email ou mot de passe incorrect.';
-    default:
-      return 'Une erreur est survenue, réessaie.';
-  }
-}
+import { authErrorMessage, resetPassword, signIn, signUp } from '../lib/auth';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');

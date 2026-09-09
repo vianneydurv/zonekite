@@ -1,10 +1,22 @@
 import { useCallback, useState } from 'react';
-import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
-import { signOut } from '../lib/auth';
+import { authErrorMessage, deleteCurrentUser, reauthenticate, signOut } from '../lib/auth';
+import { deleteMyData } from '../lib/accountDeletion';
 import { auth } from '../lib/firebase';
 import { getTrips } from '../lib/tripsStorage';
 import { getMyRequests } from '../lib/rideRequests';
@@ -38,6 +50,9 @@ export default function ProfileScreen() {
   const [pastTrips, setPastTrips] = useState<Trajet[]>([]);
   const [myRequests, setMyRequests] = useState<RideRequest[]>([]);
   const [editing, setEditing] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,6 +85,25 @@ export default function ProfileScreen() {
       });
     }, [])
   );
+
+  async function handleDeleteAccount() {
+    if (!deletePassword) return;
+    setDeleting(true);
+    try {
+      // Reauthentification requise par Firebase pour une suppression de
+      // compte. On nettoie les données Firestore tant qu'on est encore
+      // authentifié (les règles vérifient l'uid) puis on supprime le
+      // compte Auth en dernier — une fois parti, on ne peut plus prouver
+      // qui on est pour finir le nettoyage.
+      await reauthenticate(deletePassword);
+      await deleteMyData();
+      await deleteCurrentUser();
+    } catch (error) {
+      const code = error instanceof Object && 'code' in error ? String(error.code) : '';
+      Alert.alert('Suppression impossible', authErrorMessage(code));
+      setDeleting(false);
+    }
+  }
 
   if (!profile) return null;
 
@@ -104,6 +138,11 @@ export default function ProfileScreen() {
             Alert.alert('Réglages', undefined, [
               { text: 'Annuler', style: 'cancel' },
               { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },
+              {
+                text: 'Supprimer mon compte',
+                style: 'destructive',
+                onPress: () => setShowDeleteAccount(true),
+              },
             ])
           }
         >
@@ -224,6 +263,46 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      <Modal visible={showDeleteAccount} transparent animationType="fade">
+        <View style={styles.sheetBackdrop}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Supprimer ton compte ?</Text>
+            <Text style={styles.sheetBody}>
+              Action définitive et irréversible. Confirme avec ton mot de passe pour continuer.
+            </Text>
+            <TextInput
+              style={styles.sheetInput}
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              placeholder="Mot de passe"
+              placeholderTextColor={colors.navy(0.45)}
+              secureTextEntry
+              autoCapitalize="none"
+              editable={!deleting}
+            />
+            <View style={styles.sheetActionsRow}>
+              <Pressable
+                style={styles.sheetCancelButton}
+                onPress={() => {
+                  setShowDeleteAccount(false);
+                  setDeletePassword('');
+                }}
+                disabled={deleting}
+              >
+                <Text style={styles.sheetCancelText}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sheetDeleteButton, (!deletePassword || deleting) && styles.sheetDeleteButtonDisabled]}
+                onPress={handleDeleteAccount}
+                disabled={!deletePassword || deleting}
+              >
+                <Text style={styles.sheetDeleteText}>{deleting ? 'Suppression...' : 'Supprimer'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -262,4 +341,22 @@ const styles = StyleSheet.create({
   statusBadgeText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: '#9A6200' },
   statusBadgeGood: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EAF7F1' },
   statusBadgeGoodText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.status.good },
+  sheetBackdrop: { flex: 1, backgroundColor: colors.navy(0.45), justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.neutral.white, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 26, paddingBottom: 34 },
+  sheetTitle: { fontFamily: typography.h1.fontFamily, fontSize: 20, color: colors.navyBase },
+  sheetBody: { ...typography.body, color: colors.navy(0.65), marginTop: 8, lineHeight: 19 },
+  sheetInput: {
+    backgroundColor: '#F0F4F7',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 16,
+    ...typography.body,
+    color: colors.navyBase,
+  },
+  sheetActionsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  sheetCancelButton: { flex: 1, backgroundColor: '#F0F4F7', borderRadius: 13, paddingVertical: 15, alignItems: 'center' },
+  sheetCancelText: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navy(0.6) },
+  sheetDeleteButton: { flex: 1, backgroundColor: '#C0392B', borderRadius: 13, paddingVertical: 15, alignItems: 'center' },
+  sheetDeleteButtonDisabled: { opacity: 0.5 },
+  sheetDeleteText: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.neutral.white },
 });

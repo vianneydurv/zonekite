@@ -73,6 +73,9 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.conducteurUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['accepted', 'refused'];
+      // Le demandeur peut supprimer sa propre demande (ex. suppression de
+      // compte).
+      allow delete: if request.auth != null && resource.data.passagerUid == request.auth.uid;
     }
   }
 }
