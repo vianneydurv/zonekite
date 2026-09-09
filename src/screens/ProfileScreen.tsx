@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
 import { signOut } from '../lib/auth';
+import { auth } from '../lib/firebase';
 import { getTrips } from '../lib/tripsStorage';
 import { getMyRequests } from '../lib/rideRequests';
 import { localDateIso } from '../lib/matching';
@@ -12,7 +13,7 @@ import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
 import { NIVEAU_LABELS, type Profile } from '../types/profile';
 import type { Trajet } from '../types/trajet';
-import type { RideRequestStatus } from '../types/rideRequest';
+import type { RideRequest, RideRequestStatus } from '../types/rideRequest';
 import OnboardingScreen from './OnboardingScreen';
 
 const NEXT_RIDE_STATUS_LABELS: Record<RideRequestStatus, string> = {
@@ -29,10 +30,13 @@ interface NextRide {
 
 // Profil utilisateur : prénom, photo, niveau, ville, matériel
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [nextRide, setNextRide] = useState<NextRide | null>(null);
+  const [pastTrips, setPastTrips] = useState<Trajet[]>([]);
+  const [myRequests, setMyRequests] = useState<RideRequest[]>([]);
   const [editing, setEditing] = useState(false);
 
   useFocusEffect(
@@ -40,23 +44,29 @@ export default function ProfileScreen() {
       getProfile().then(setProfile);
       getFavoriteIds().then((ids) => setFavoriteCount(ids.length));
 
-      Promise.all([getTrips(), getMyRequests(), getProfile()]).then(([allTrips, myRequests, p]) => {
+      Promise.all([getTrips(), getMyRequests(), getProfile()]).then(([allTrips, requests, p]) => {
+        setMyRequests(requests);
         const todayIso = localDateIso(new Date());
         const trips = allTrips.filter((t) => t.date >= todayIso);
-        const requestedIds = myRequests.map((r) => r.tripId);
+        const requestedIds = requests.map((r) => r.tripId);
         const mine = trips.filter((t) => t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id));
         setCarpoolCount(mine.length);
 
         const upcoming = trips
           .filter((t) => requestedIds.includes(t.id))
           .sort((a, b) => a.date.localeCompare(b.date))[0];
-        const upcomingRequest = upcoming ? myRequests.find((r) => r.tripId === upcoming.id) : null;
+        const upcomingRequest = upcoming ? requests.find((r) => r.tripId === upcoming.id) : null;
         if (upcoming && upcomingRequest) {
           const spot = spots.find((s) => s.id === upcoming.spotId);
           setNextRide({ trip: upcoming, spotName: spot?.nom ?? 'Spot inconnu', status: upcomingRequest.status });
         } else {
           setNextRide(null);
         }
+
+        const past = allTrips
+          .filter((t) => t.date < todayIso && (t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id)))
+          .sort((a, b) => b.date.localeCompare(a.date));
+        setPastTrips(past);
       });
     }, [])
   );
@@ -108,15 +118,14 @@ export default function ProfileScreen() {
               {NIVEAU_LABELS[profile.niveau]}
               {profile.ville ? ` · ${profile.ville}` : ''}
             </Text>
+            {auth.currentUser?.email && (
+              <Text style={styles.emailLine}>{auth.currentUser.email}</Text>
+            )}
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.white(0.5)} />
         </Pressable>
 
         <View style={styles.statsRow}>
-          <View style={styles.statTile}>
-            <Text style={styles.statValue}>—</Text>
-            <Text style={styles.statLabel}>SESSIONS</Text>
-          </View>
           <View style={styles.statTile}>
             <Text style={styles.statValue}>{carpoolCount}</Text>
             <Text style={styles.statLabel}>COVOITS</Text>
@@ -171,6 +180,49 @@ export default function ProfileScreen() {
             )}
           </View>
         </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardEyebrow}>HISTORIQUE</Text>
+          {pastTrips.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun trajet passé pour l'instant.</Text>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {pastTrips.map((trip) => {
+                const spot = spots.find((s) => s.id === trip.spotId);
+                const isDriver = trip.conducteurPrenom === profile.prenom;
+                const request = !isDriver ? myRequests.find((r) => r.tripId === trip.id) : null;
+                return (
+                  <Pressable
+                    key={trip.id}
+                    style={styles.historyRow}
+                    onPress={() => navigation.navigate('Carpool', { screen: 'TripDetail', params: { tripId: trip.id } })}
+                  >
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.historyTitle} numberOfLines={1}>
+                        {spot?.nom ?? 'Spot inconnu'}
+                      </Text>
+                      <Text style={styles.historySub}>
+                        {new Date(trip.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                        {' · '}
+                        {isDriver ? 'Conducteur·rice' : `Passager chez ${trip.conducteurPrenom}`}
+                      </Text>
+                    </View>
+                    {request && (
+                      <View style={request.status === 'accepted' ? styles.statusBadgeGood : styles.statusBadge}>
+                        <Text style={request.status === 'accepted' ? styles.statusBadgeGoodText : styles.statusBadgeText}>
+                          {NEXT_RIDE_STATUS_LABELS[request.status]}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -185,6 +237,7 @@ const styles = StyleSheet.create({
   photo: { width: 72, height: 72, borderRadius: 36 },
   prenom: { fontFamily: typography.h1.fontFamily, fontSize: 23, color: colors.neutral.white, letterSpacing: -0.4 },
   subline: { ...typography.body, color: colors.white(0.6), marginTop: 5 },
+  emailLine: { ...typography.body, fontSize: 11.5, color: colors.white(0.4), marginTop: 3 },
   statsRow: { flexDirection: 'row', gap: 8, marginTop: 18 },
   statTile: { flex: 1, backgroundColor: colors.white(0.1), borderRadius: 11, padding: 11 },
   statValue: { fontFamily: typography.h1.fontFamily, fontSize: 19, color: colors.neutral.white },
@@ -200,6 +253,9 @@ const styles = StyleSheet.create({
   chip: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 9, backgroundColor: '#F0F4F7' },
   chipText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.navyBase },
   nextRideRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  historyTitle: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase },
+  historySub: { ...typography.body, color: colors.navy(0.5), marginTop: 2 },
   nextRideTitle: { fontFamily: typography.h3.fontFamily, fontSize: 14.5, color: colors.navyBase },
   nextRideSub: { ...typography.body, color: colors.navy(0.5), marginTop: 3 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FDF3E3' },
