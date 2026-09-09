@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { colors, typography } from '../theme';
-import { signIn, signUp } from '../lib/auth';
+import { resetPassword, signIn, signUp } from '../lib/auth';
 
 function authErrorMessage(code: string): string {
   switch (code) {
@@ -56,6 +56,23 @@ export default function AuthScreen() {
     }
   }
 
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      Alert.alert('Mot de passe oublié', "Renseigne d'abord ton email ci-dessus, puis appuie de nouveau ici.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPassword(email.trim());
+      Alert.alert('Email envoyé', `Un lien de réinitialisation a été envoyé à ${email.trim()}.`);
+    } catch (error) {
+      const code = error instanceof Object && 'code' in error ? String(error.code) : '';
+      Alert.alert("Impossible d'envoyer l'email", authErrorMessage(code));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -94,6 +111,12 @@ export default function AuthScreen() {
             autoCapitalize="none"
             autoComplete="password"
           />
+
+          {mode === 'login' && (
+            <Pressable style={styles.forgotPasswordLink} onPress={handleForgotPassword}>
+              <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+            </Pressable>
+          )}
 
           <Pressable
             style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
@@ -148,6 +171,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.ocean[900],
   },
+  forgotPasswordLink: { alignSelf: 'flex-end', marginTop: 10 },
+  forgotPasswordText: { ...typography.caption, color: colors.ocean[700], fontWeight: '600' },
   submitButton: {
     backgroundColor: colors.accent[500],
     borderRadius: 12,
