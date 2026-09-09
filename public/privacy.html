@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Politique de confidentialité — ZoneKite</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0;
+    background: #F4F6F8;
+    color: #062E45;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+  h1 {
+    font-size: 26px;
+    margin-bottom: 4px;
+  }
+  .updated {
+    color: rgba(6,46,69,0.55);
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 18px;
+    margin-top: 36px;
+    margin-bottom: 10px;
+    color: #062E45;
+  }
+  p, li {
+    font-size: 15px;
+    color: rgba(6,46,69,0.85);
+  }
+  ul {
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 6px;
+  }
+  a {
+    color: #0A6EA8;
+  }
+  .card {
+    background: #FFFFFF;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-top: 8px;
+    border: 1px solid rgba(6,46,69,0.08);
+  }
+  .badge {
+    display: inline-block;
+    background: #EAF1F6;
+    color: #0A6EA8;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">ZONEKITE</span>
+  <h1>Politique de confidentialité</h1>
+  <p class="updated">Dernière mise à jour : 9 septembre 2026</p>
+
+  <p>
+    ZoneKite est une application d'aide à la pratique du kitesurf (recherche de
+    spots, prévisions vent/marée, mise en relation pour du covoiturage, forum
+    entre pratiquants). Cette page explique quelles données sont collectées,
+    pourquoi, et comment les gérer.
+  </p>
+
+  <h2>Qui est responsable de vos données</h2>
+  <p>
+    ZoneKite est développée à titre individuel. Pour toute question ou demande
+    concernant vos données personnelles, contact :
+    <a href="mailto:vividurv@gmail.com">vividurv@gmail.com</a>.
+  </p>
+
+  <h2>Données collectées</h2>
+  <div class="card">
+    <p><strong>À la création de compte</strong></p>
+    <ul>
+      <li>Adresse email et mot de passe (authentification via Firebase Auth — le mot de passe n'est jamais accessible en clair, y compris par nous).</li>
+    </ul>
+    <p><strong>Dans votre profil</strong></p>
+    <ul>
+      <li>Prénom, niveau de pratique, ville de départ habituelle</li>
+      <li>Photo de profil (choisie depuis votre pellicule)</li>
+      <li>Matériel renseigné (ailes, boards)</li>
+      <li>Spots mis en favoris</li>
+    </ul>
+    <p><strong>Covoiturage</strong></p>
+    <ul>
+      <li>Trajets que vous publiez (spot, date, horaires, adresse de départ, véhicule, places disponibles)</li>
+      <li>Demandes de place que vous envoyez (statut : en attente / acceptée / refusée)</li>
+    </ul>
+    <p><strong>Forum</strong></p>
+    <ul>
+      <li>Sujets et commentaires que vous publiez, visibles par les autres membres connectés</li>
+    </ul>
+  </div>
+
+  <h2>Ce que nous ne collectons pas</h2>
+  <ul>
+    <li>Pas de géolocalisation : votre position n'est jamais suivie automatiquement. Le point de départ pour la recherche de spot est un texte que vous saisissez vous-même.</li>
+    <li>Pas de traceurs publicitaires, pas d'outil d'analyse d'audience, pas de revente de données à des tiers.</li>
+  </ul>
+
+  <h2>Pourquoi ces données sont utilisées</h2>
+  <ul>
+    <li>Créer et sécuriser votre compte</li>
+    <li>Afficher votre profil aux autres membres (covoiturage, forum)</li>
+    <li>Calculer une distance approximative entre votre point de départ et les spots (via l'API Adresse du gouvernement français, qui ne reçoit que le texte de l'adresse recherchée, jamais votre identité)</li>
+    <li>Permettre la mise en relation pour le covoiturage et les échanges du forum</li>
+  </ul>
+
+  <h2>Services tiers utilisés</h2>
+  <ul>
+    <li><strong>Firebase (Google)</strong> — authentification et base de données. Vos données de compte, profil, trajets et messages y sont stockées.</li>
+    <li><strong>Open-Meteo</strong> — prévisions météo des spots. Seules les coordonnées du spot consulté sont envoyées, jamais de donnée vous concernant.</li>
+    <li><strong>API Adresse (data.gouv.fr)</strong> — conversion d'une adresse en coordonnées, pour le calcul de distance. Seul le texte de l'adresse recherchée est envoyé.</li>
+    <li><strong>Windguru</strong> et <strong>Apple Plans</strong> — accessibles via des liens externes que vous choisissez d'ouvrir depuis la fiche d'un spot ; ces services ne reçoivent aucune donnée de notre part.</li>
+  </ul>
+
+  <h2>Durée de conservation</h2>
+  <p>
+    Vos données sont conservées tant que votre compte existe. Vous pouvez le
+    supprimer à tout moment depuis <em>Profil → Réglages → Supprimer mon
+    compte</em> : votre profil, vos trajets publiés, vos demandes de
+    covoiturage et vos sujets de forum sont alors effacés. Par exception, les
+    commentaires déjà publiés dans le forum peuvent rester visibles après
+    suppression du compte (ils restent affichés sous votre ancien prénom,
+    sans lien technique restant vers votre compte).
+  </p>
+
+  <h2>Vos droits</h2>
+  <p>
+    Conformément au RGPD, vous disposez d'un droit d'accès, de rectification,
+    d'effacement, de limitation et d'opposition sur vos données. La plupart de
+    ces actions sont directement disponibles dans l'application (édition du
+    profil, suppression du compte). Pour toute autre demande, écrivez à
+    <a href="mailto:vividurv@gmail.com">vividurv@gmail.com</a>.
+  </p>
+
+  <h2>Sécurité</h2>
+  <p>
+    L'accès à vos données est protégé par des règles de sécurité Firestore :
+    seul votre compte peut lire ou modifier votre profil, et seul l'auteur
+    d'un trajet, d'un post ou d'un commentaire peut le modifier ou le
+    supprimer.
+  </p>
+
+  <h2>Mineurs</h2>
+  <p>
+    ZoneKite ne cible pas spécifiquement les mineurs de moins de 15 ans. Si
+    vous avez moins de 15 ans, la création d'un compte doit se faire avec
+    l'autorisation d'un titulaire de l'autorité parentale.
+  </p>
+
+  <h2>Modifications</h2>
+  <p>
+    Cette politique peut évoluer avec les fonctionnalités de l'application.
+    La date de mise à jour en haut de page reflète la dernière version.
+  </p>
+</main>
+</body>
+</html>
