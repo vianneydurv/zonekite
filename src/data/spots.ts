@@ -5,6 +5,12 @@ import type { Spot } from '../types/spot';
 // ⚠️ Coordonnées approximatives à affiner sur une carte avant mise en prod.
 // ⚠️ Réglementations saisonnières à revérifier chaque année (dates changeantes
 // par arrêté municipal).
+// Passe de vérification web du 2026-09-09 : coordonnées et réglementations
+// recoupées avec des sources publiques (voir commentaires et champs "source"
+// par spot pour les corrections faites). Coordonnées encore à vérifier
+// manuellement sur une carte avant prod (écarts trouvés mais non tranchés
+// avec certitude) : le-veillon-talmont-saint-hilaire, barbatre-noirmoutier,
+// siouville-hague, baie-du-kernic-plouescat, la-hume-gujan-mestras.
 export const spots: Spot[] = [
   // ---------------------------------------------------------------
   // HAUTS-DE-FRANCE
@@ -62,7 +68,9 @@ export const spots: Spot[] = [
     contrainteMaree: 'maree_haute',
     contrainteMareeDetail: 'Navigable uniquement autour de la marée haute (1h à 2h avant/après selon coefficient) : hors de cette fenêtre, la baie se vide.',
     niveauIndicatif: 'Débutants',
-    source: 'theridery.com, kitetrip-planner.com, kiteloopers.com',
+    reglementation:
+      "Kitesurf interdit dans la réserve naturelle nationale de la baie de Somme (arrêté préfectoral n°80-2025-02-05-00002, art. 16, du 5 février 2025). Localement interdit sur le front bâti du Crotoy, toléré au nord de la plage.",
+    source: 'theridery.com, kitetrip-planner.com, kiteloopers.com, france3-regions.franceinfo.fr',
   },
   {
     id: 'berck-plage',
@@ -89,8 +97,8 @@ export const spots: Spot[] = [
     id: 'merville-franceville-plage',
     nom: 'Merville-Franceville-Plage',
     region: 'Normandie',
-    lat: 49.2833,
-    lon: -0.1333,
+    lat: 49.2775, // corrigé (Wikipedia) : le point d'origine (49.2833/-0.1333) tombait ~5 km trop à l'est, côté Cabourg
+    lon: -0.2033,
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5b/MF01.jpg',
     windguruId: 109118,
@@ -100,7 +108,9 @@ export const spots: Spot[] = [
     ventMaxNoeuds: 25,
     directionsFavorables: ['N', 'S'],
     contrainteMaree: 'toutes',
-    source: 'kazaden.com, hintigo.fr',
+    reglementation:
+      "Kite autorisé toute l'année sur l'ensemble de la plage, sauf du 16 juin au 15 septembre où la pratique est limitée à la zone entre l'estuaire de l'Orne et le chenal kite n°1 (à l'ouest des bouées). 300 derniers mètres à l'ouest interdits (réserve de chasse).",
+    source: 'kazaden.com, hintigo.fr, letskite.ch',
   },
   {
     id: 'siouville-hague',
@@ -155,8 +165,8 @@ export const spots: Spot[] = [
     id: 'colleville-montgomery',
     nom: 'Colleville-Montgomery',
     region: 'Normandie',
-    lat: 49.3333,
-    lon: -0.35,
+    lat: 49.2833, // corrigé (Wikipedia) : le point d'origine (49.3333/-0.35) tombait ~6,5 km trop au nord-est
+    lon: -0.3,
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Plage_Colleville-Montgomery.JPG',
     windguruId: 102826,
@@ -175,8 +185,8 @@ export const spots: Spot[] = [
     id: 'kerhilio-erdeven',
     nom: 'Kerhilio (Erdeven)',
     region: 'Bretagne',
-    lat: 47.65,
-    lon: -3.15,
+    lat: 47.6115, // corrigé (powerkiter.fr, morbihan.com) : le point d'origine (47.65/-3.15) tombait ~4-5 km trop au nord-ouest
+    lon: -3.1695,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Plage_de_kerhilio_a_erdeven_-_panoramio.jpg',
     windguruId: 217532,
@@ -192,8 +202,8 @@ export const spots: Spot[] = [
     id: 'les-sables-blancs-quiberon',
     nom: 'Les Sables Blancs (Quiberon)',
     region: 'Bretagne',
-    lat: 47.51,
-    lon: -3.14,
+    lat: 47.5753, // corrigé (Wikipedia, komoot) : le point d'origine (47.51/-3.14) tombait ~6 km trop au sud
+    lon: -3.1322,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Morbihan_Plouharnel_Les_Sables_Blancs_Pen_Er_Le_Baie_De_Quiberon_25032016_-_panoramio.jpg',
     windguruId: 48485,
@@ -261,8 +271,8 @@ export const spots: Spot[] = [
     contrainteMaree: 'toutes',
     niveauIndicatif: 'Intermédiaire à expert',
     reglementation:
-      "Baie d'Audierne classée site naturel protégé (dunes, décollage réglementé hors zones).",
-    source: 'Tourisme Bretagne, surf-report.com, plomeur.com',
+      "Baie d'Audierne classée site naturel protégé (dunes, décollage réglementé hors zones). Côté droit (Plomeur) réservé au surf du 15 juin au 15 septembre (accord tacite, pas de kite) ; côté gauche (Pors Carn, Penmarc'h), kite uniquement dans le chenal balisé par bouées jaunes (arrêté préfectoral). Gréage interdit sur dune/herbe toute l'année.",
+    source: 'Tourisme Bretagne, surf-report.com, plomeur.com, letskite.ch',
   },
   {
     id: 'saint-michel-en-greve',
@@ -287,8 +297,8 @@ export const spots: Spot[] = [
     id: 'fort-bloque-guidel-ploemeur',
     nom: 'Fort-Bloqué (Guidel/Ploemeur)',
     region: 'Bretagne',
-    lat: 47.763,
-    lon: -3.515,
+    lat: 47.746, // corrigé (campingcar-story.fr, mindat.org) : le point d'origine (47.763/-3.515) tombait ~2 km trop au nord
+    lon: -3.503,
     mareeRef: '2026-08-29T18:29:00+02:00', // ancre M2 : pleine mer Le Guilvinec
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/48/Plage_de_guidel_et_fort_bloqu%C3%A9_-_panoramio.jpg',
     windguruId: 48472,
@@ -299,8 +309,9 @@ export const spots: Spot[] = [
     directionsFavorables: ['S', 'SW', 'SE', 'W', 'NW', 'N'],
     contrainteMaree: 'variable',
     contrainteMareeDetail: 'Prudence à mi-marée (rochers immergés).',
-    reglementation: 'Zone kite réglementée juillet-août.',
-    source: 'Sportihome, Kitetrip-planner, golfedumorbihan56.com',
+    reglementation:
+      'Zone kite réglementée du 1er juillet au 31 août (accord annuel avec la mairie de Guidel) : navigation interdite dans la zone de baignade balisée par bouées jaunes.',
+    source: 'Sportihome, Kitetrip-planner, golfedumorbihan56.com, guidelkiteclub.com',
   },
   {
     id: 'petite-mer-de-gavres',
@@ -318,7 +329,9 @@ export const spots: Spot[] = [
     directionsFavorables: ['NW', 'W', 'SW', 'S', 'SE', 'E'],
     contrainteMaree: 'maree_haute',
     contrainteMareeDetail: 'Remplissage à mi-marée.',
-    source: 'Kitetrip-planner, golfedumorbihan56.com',
+    reglementation:
+      "Du 1er octobre au 30 avril, navigation interdite dans le tiers nord de la Petite Mer pour protéger l'avifaune (charte 2011 des kiters de Gâvres, à reconfirmer). Zone aussi soumise à contraintes militaires (tir DGA, drapeau rouge = fermeture).",
+    source: 'Kitetrip-planner, golfedumorbihan56.com, radedelorient.n2000.fr',
   },
   {
     id: 'landrezac-sarzeau',
@@ -595,8 +608,8 @@ export const spots: Spot[] = [
     contrainteMaree: 'maree_basse',
     niveauIndicatif: 'Débutant (lagon) à expert (au large, après les bancs)',
     reglementation:
-      'Interdiction estivale stricte à dates variables chaque année (vérifier avant chaque saison) — sauf zone/chenal des Arbousiers à certains horaires.',
-    source: 'universkite.fr, APC Kite',
+      "Hors saison, kite libre sur toute la plage. Du 25 juin au 5 septembre environ (dates à confirmer chaque année via l'arrêté municipal de La Teste-de-Buch en vigueur), pratique réservée au chenal dédié dit \"chenal de la Salie\".",
+    source: 'universkite.fr, APC Kite, latestedebuch.fr (arrêté 2019-358)',
   },
   {
     id: 'lacanau-ocean',
@@ -638,7 +651,9 @@ export const spots: Spot[] = [
     directionsFavorables: ['W', 'NW'],
     contrainteMaree: 'inconnue',
     niveauIndicatif: 'Intermédiaire à expert',
-    source: "Let's Kite, Fun Kite Sud Ouest",
+    reglementation:
+      "Zone kite dédiée signalée de juin à septembre pendant les heures de baignade surveillée, tolérance hors zone jusqu'à 19h (arrêté municipal n°2023/592, à reconfirmer chaque année).",
+    source: "Let's Kite, Fun Kite Sud Ouest, fksudouest.com",
   },
   {
     id: 'la-madrague-anglet',
@@ -657,7 +672,7 @@ export const spots: Spot[] = [
     contrainteMaree: 'maree_basse',
     niveauIndicatif: 'Intermédiaire à expert',
     reglementation:
-      "Kite autorisé uniquement du 1er novembre au 31 mai sur les plages d'Anglet (interdit en saison estivale).",
+      "Kite autorisé uniquement du 1er novembre au 31 mai sur les plages d'Anglet. En saison (1er juin-31 octobre), un chenal virtuel est ouvert de 6h à 9h30 et après 19h (arrêté municipal, dernière version identifiée : n°2026/622).",
     source: 'Allosurf, Fun Kite Sud Ouest',
   },
   {
