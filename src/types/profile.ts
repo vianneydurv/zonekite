@@ -28,10 +28,10 @@ export interface Profile {
   // Obligatoire : sert de point de départ par défaut pour la recherche de spot.
   ville: string;
   materiel: Materiel;
-  // Gérés séparément par favorites.ts / rideRequests.ts (Firestore
-  // arrayUnion/arrayRemove), pas par saveProfile.
+  // Géré séparément par favorites.ts (Firestore arrayUnion/arrayRemove),
+  // pas par saveProfile. Les demandes de covoiturage vivent dans la
+  // collection rideRequests (voir rideRequests.ts), pas sur le profil.
   favoriteSpotIds?: string[];
-  requestedTripIds?: string[];
 }
 
 export const NIVEAU_LABELS: Record<NiveauKite, string> = {

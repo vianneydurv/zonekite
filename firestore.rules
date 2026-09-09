@@ -7,11 +7,17 @@ service cloud.firestore {
     }
 
     // Trajets de covoiturage : visibles par tous les membres connectés,
-    // création libre, pas de modification/suppression pour l'instant (pas
-    // d'UI d'édition dans l'app).
+    // création libre. Le conducteur peut mettre à jour le nombre de places
+    // disponibles (ex. quand il accepte une demande de place) — identifié
+    // par conducteurUid, absent sur les trajets créés avant ce champ, donc
+    // ceux-là restent non modifiables. Pas d'autre modification/suppression
+    // pour l'instant (pas d'UI d'édition dans l'app).
     match /trips/{tripId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && resource.data.conducteurUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['placesDispo']);
     }
 
     // Sujets de forum : visibles par tous les membres connectés, création
@@ -32,12 +38,20 @@ service cloud.firestore {
     // Demandes de place en covoiturage : lisibles par tous les membres
     // connectés (le conducteur doit voir les demandes reçues sur son
     // trajet), créées uniquement par le demandeur pour lui-même et
-    // toujours au statut initial "pending".
+    // toujours au statut initial "pending". Seul le conducteur du trajet
+    // concerné (comparé via conducteurUid sur le trajet) peut faire passer
+    // une demande à "accepted" ou "refused", et uniquement ce champ-là —
+    // un trajet créé avant l'introduction de conducteurUid ne peut donc
+    // plus recevoir de réponse (dégradation sûre plutôt qu'ouverte).
     match /rideRequests/{requestId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.passagerUid == request.auth.uid
         && request.resource.data.status == 'pending';
+      allow update: if request.auth != null
+        && get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.conducteurUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted', 'refused'];
     }
   }
 }

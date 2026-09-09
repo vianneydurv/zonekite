@@ -7,7 +7,7 @@ import type { CarpoolStackParamList } from '../navigation/CarpoolStackNavigator'
 import { spots } from '../data/spots';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
-import { getRequestedTripIds, getRequestsForTrips, requestSeat } from '../lib/rideRequests';
+import { acceptRequest, getMyRequests, getRequestsForTrips, refuseRequest, requestSeat } from '../lib/rideRequests';
 import { getProfile } from '../lib/profileStorage';
 import type { Trajet } from '../types/trajet';
 import type { Profile } from '../types/profile';
@@ -24,16 +24,16 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   const { tripId } = route.params;
   const [trip, setTrip] = useState<Trajet | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [requested, setRequested] = useState(false);
+  const [myRequest, setMyRequest] = useState<RideRequest | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [requests, setRequests] = useState<RideRequest[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       getTrips().then((trips) => setTrip(trips.find((t) => t.id === tripId) ?? null));
-      getRequestedTripIds().then((ids) => setRequested(ids.includes(tripId)));
       getProfile().then(setProfile);
       getRequestsForTrips([tripId]).then(setRequests);
+      getMyRequests().then((reqs) => setMyRequest(reqs.find((r) => r.tripId === tripId) ?? null));
     }, [tripId])
   );
 
@@ -44,10 +44,28 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   const isDriver = profile != null && trip.conducteurPrenom === profile.prenom;
 
   async function handleRequest() {
-    if (requested) return;
+    if (myRequest) return;
     await requestSeat(trip!.id, profile);
-    setRequested(true);
+    setMyRequest({
+      id: `${trip!.id}_pending`,
+      tripId: trip!.id,
+      passagerUid: '',
+      passagerPrenom: profile?.prenom ?? 'Moi',
+      status: 'pending',
+      date: new Date().toISOString(),
+    });
     setShowSheet(true);
+  }
+
+  async function handleAccept(request: RideRequest) {
+    await acceptRequest(request);
+    setRequests((rs) => rs.map((r) => (r.id === request.id ? { ...r, status: 'accepted' } : r)));
+    setTrip((t) => (t ? { ...t, placesDispo: t.placesDispo - 1 } : t));
+  }
+
+  async function handleRefuse(request: RideRequest) {
+    await refuseRequest(request.id);
+    setRequests((rs) => rs.map((r) => (r.id === request.id ? { ...r, status: 'refused' } : r)));
   }
 
   return (
@@ -128,16 +146,29 @@ export default function TripDetailScreen({ route, navigation }: Props) {
                       <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]} />
                     )}
                     <Text style={styles.requestName}>{req.passagerPrenom}</Text>
-                    <View style={styles.statusBadge}>
-                      <Text style={styles.statusBadgeText}>EN ATTENTE</Text>
-                    </View>
+                    {req.status === 'pending' ? (
+                      <View style={styles.requestActions}>
+                        <Pressable style={styles.refuseButton} onPress={() => handleRefuse(req)}>
+                          <Text style={styles.refuseButtonText}>Refuser</Text>
+                        </Pressable>
+                        <Pressable style={styles.acceptButton} onPress={() => handleAccept(req)}>
+                          <Text style={styles.acceptButtonText}>Accepter</Text>
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <View style={req.status === 'accepted' ? styles.statusBadgeGood : styles.statusBadge}>
+                        <Text style={req.status === 'accepted' ? styles.statusBadgeGoodText : styles.statusBadgeText}>
+                          {req.status === 'accepted' ? 'ACCEPTÉE' : 'REFUSÉE'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>
             )}
           </View>
         ) : (
-          (trip.dejaABord?.length || requested) && (
+          (trip.dejaABord?.length || myRequest?.status === 'accepted') && (
             <View style={styles.card}>
               <Text style={styles.eyebrow}>DÉJÀ À BORD</Text>
               <View style={styles.boardRow}>
@@ -147,7 +178,7 @@ export default function TripDetailScreen({ route, navigation }: Props) {
                     <Text style={styles.boardName}>{name}</Text>
                   </View>
                 ))}
-                {requested && (
+                {myRequest?.status === 'accepted' && (
                   <View style={styles.boardPerson}>
                     <View style={[styles.boardAvatar, styles.boardAvatarMe]} />
                     <Text style={styles.boardName}>Toi</Text>
@@ -162,12 +193,18 @@ export default function TripDetailScreen({ route, navigation }: Props) {
       {!isDriver && (
         <View style={styles.footer}>
           <Pressable
-            style={[styles.cta, requested && styles.ctaDisabled]}
+            style={[styles.cta, myRequest && styles.ctaDisabled]}
             onPress={handleRequest}
-            disabled={requested}
+            disabled={myRequest != null}
           >
-            <Text style={[styles.ctaText, requested && styles.ctaTextDisabled]}>
-              {requested ? 'DEMANDE EN ATTENTE' : 'DEMANDER UNE PLACE'}
+            <Text style={[styles.ctaText, myRequest && styles.ctaTextDisabled]}>
+              {myRequest?.status === 'accepted'
+                ? 'PLACE CONFIRMÉE'
+                : myRequest?.status === 'refused'
+                  ? 'DEMANDE REFUSÉE'
+                  : myRequest
+                    ? 'DEMANDE EN ATTENTE'
+                    : 'DEMANDER UNE PLACE'}
             </Text>
           </Pressable>
         </View>
@@ -238,6 +275,13 @@ const styles = StyleSheet.create({
   requestName: { flex: 1, fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FDF3E3' },
   statusBadgeText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: '#9A6200' },
+  statusBadgeGood: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EAF7F1' },
+  statusBadgeGoodText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.status.good },
+  requestActions: { flexDirection: 'row', gap: 7 },
+  refuseButton: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, backgroundColor: '#F0F4F7' },
+  refuseButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 11.5, color: colors.navy(0.6) },
+  acceptButton: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, backgroundColor: colors.accent[500] },
+  acceptButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 11.5, color: colors.neutral.white },
   footer: { padding: 12, paddingBottom: 20, backgroundColor: colors.neutral.white, borderTopWidth: 1, borderTopColor: colors.navy(0.09) },
   cta: { backgroundColor: colors.accent[500], borderRadius: 13, paddingVertical: 16, alignItems: 'center' },
   ctaDisabled: { backgroundColor: '#F0F4F7' },

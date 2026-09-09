@@ -6,17 +6,25 @@ import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
 import { signOut } from '../lib/auth';
 import { getTrips } from '../lib/tripsStorage';
-import { getRequestedTripIds } from '../lib/rideRequests';
+import { getMyRequests } from '../lib/rideRequests';
 import { localDateIso } from '../lib/matching';
 import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
 import { NIVEAU_LABELS, type Profile } from '../types/profile';
 import type { Trajet } from '../types/trajet';
+import type { RideRequestStatus } from '../types/rideRequest';
 import OnboardingScreen from './OnboardingScreen';
+
+const NEXT_RIDE_STATUS_LABELS: Record<RideRequestStatus, string> = {
+  pending: 'EN ATTENTE',
+  accepted: 'CONFIRMÉ',
+  refused: 'REFUSÉ',
+};
 
 interface NextRide {
   trip: Trajet;
   spotName: string;
+  status: RideRequestStatus;
 }
 
 // Profil utilisateur : prénom, photo, niveau, ville, matériel
@@ -32,24 +40,24 @@ export default function ProfileScreen() {
       getProfile().then(setProfile);
       getFavoriteIds().then((ids) => setFavoriteCount(ids.length));
 
-      Promise.all([getTrips(), getRequestedTripIds(), getProfile()]).then(
-        ([allTrips, requestedIds, p]) => {
-          const todayIso = localDateIso(new Date());
-          const trips = allTrips.filter((t) => t.date >= todayIso);
-          const mine = trips.filter((t) => t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id));
-          setCarpoolCount(mine.length);
+      Promise.all([getTrips(), getMyRequests(), getProfile()]).then(([allTrips, myRequests, p]) => {
+        const todayIso = localDateIso(new Date());
+        const trips = allTrips.filter((t) => t.date >= todayIso);
+        const requestedIds = myRequests.map((r) => r.tripId);
+        const mine = trips.filter((t) => t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id));
+        setCarpoolCount(mine.length);
 
-          const upcoming = trips
-            .filter((t) => requestedIds.includes(t.id))
-            .sort((a, b) => a.date.localeCompare(b.date))[0];
-          if (upcoming) {
-            const spot = spots.find((s) => s.id === upcoming.spotId);
-            setNextRide({ trip: upcoming, spotName: spot?.nom ?? 'Spot inconnu' });
-          } else {
-            setNextRide(null);
-          }
+        const upcoming = trips
+          .filter((t) => requestedIds.includes(t.id))
+          .sort((a, b) => a.date.localeCompare(b.date))[0];
+        const upcomingRequest = upcoming ? myRequests.find((r) => r.tripId === upcoming.id) : null;
+        if (upcoming && upcomingRequest) {
+          const spot = spots.find((s) => s.id === upcoming.spotId);
+          setNextRide({ trip: upcoming, spotName: spot?.nom ?? 'Spot inconnu', status: upcomingRequest.status });
+        } else {
+          setNextRide(null);
         }
-      );
+      });
     }, [])
   );
 
@@ -155,8 +163,10 @@ export default function ProfileScreen() {
               </Text>
             </View>
             {nextRide && (
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>EN ATTENTE</Text>
+              <View style={nextRide.status === 'accepted' ? styles.statusBadgeGood : styles.statusBadge}>
+                <Text style={nextRide.status === 'accepted' ? styles.statusBadgeGoodText : styles.statusBadgeText}>
+                  {NEXT_RIDE_STATUS_LABELS[nextRide.status]}
+                </Text>
               </View>
             )}
           </View>
@@ -194,4 +204,6 @@ const styles = StyleSheet.create({
   nextRideSub: { ...typography.body, color: colors.navy(0.5), marginTop: 3 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FDF3E3' },
   statusBadgeText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: '#9A6200' },
+  statusBadgeGood: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EAF7F1' },
+  statusBadgeGoodText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.status.good },
 });

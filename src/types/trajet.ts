@@ -1,6 +1,11 @@
 export interface Trajet {
   id: string;
   spotId: string;
+  // Optionnel : absent sur les trajets créés avant l'introduction du champ.
+  // Sert à vérifier côté règles Firestore que seul le conducteur peut
+  // modifier son trajet (ex. décompte des places à l'acceptation d'une
+  // demande).
+  conducteurUid?: string;
   conducteurPrenom: string;
   conducteurPhotoUri?: string;
   date: string; // ISO yyyy-mm-dd

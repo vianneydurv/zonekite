@@ -16,6 +16,7 @@ import { colors, typography } from '../theme';
 import { spots } from '../data/spots';
 import { addTrip } from '../lib/tripsStorage';
 import { getProfile } from '../lib/profileStorage';
+import { auth } from '../lib/firebase';
 import { localDateIso } from '../lib/matching';
 import type { Trajet } from '../types/trajet';
 
@@ -76,6 +77,7 @@ export default function CreateTripScreen({ navigation, route }: Props) {
     const trip: Trajet = {
       id: `${Date.now()}`,
       spotId,
+      conducteurUid: auth.currentUser?.uid,
       conducteurPrenom: profile?.prenom ?? 'Moi',
       conducteurPhotoUri: profile?.photoUri,
       date: localDateIso(selectedDate),

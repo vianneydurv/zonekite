@@ -1,20 +1,9 @@
-import { arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { Profile } from '../types/profile';
-import type { RideRequest } from '../types/rideRequest';
-
-function profileRef() {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Aucun utilisateur connecté');
-  return doc(db, 'profiles', uid);
-}
+import type { RideRequest, RideRequestStatus } from '../types/rideRequest';
 
 const requestsCollection = collection(db, 'rideRequests');
-
-export async function getRequestedTripIds(): Promise<string[]> {
-  const snap = await getDoc(profileRef());
-  return (snap.data()?.requestedTripIds as string[] | undefined) ?? [];
-}
 
 export async function requestSeat(tripId: string, profile: Profile | null): Promise<void> {
   const uid = auth.currentUser?.uid;
@@ -30,7 +19,6 @@ export async function requestSeat(tripId: string, profile: Profile | null): Prom
     date: new Date().toISOString(),
   };
   await setDoc(doc(requestsCollection, request.id), request);
-  await updateDoc(profileRef(), { requestedTripIds: arrayUnion(tripId) });
 }
 
 // Le conducteur consulte les demandes reçues sur ses trajets. Firestore
@@ -40,4 +28,26 @@ export async function getRequestsForTrips(tripIds: string[]): Promise<RideReques
   if (tripIds.length === 0) return [];
   const snap = await getDocs(query(requestsCollection, where('tripId', 'in', tripIds.slice(0, 30))));
   return snap.docs.map((d) => d.data() as RideRequest);
+}
+
+// Le passager consulte le statut de ses propres demandes (tous trajets confondus).
+export async function getMyRequests(): Promise<RideRequest[]> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return [];
+  const snap = await getDocs(query(requestsCollection, where('passagerUid', '==', uid)));
+  return snap.docs.map((d) => d.data() as RideRequest);
+}
+
+async function setRequestStatus(requestId: string, status: RideRequestStatus): Promise<void> {
+  await updateDoc(doc(requestsCollection, requestId), { status });
+}
+
+export async function acceptRequest(request: RideRequest): Promise<void> {
+  await setRequestStatus(request.id, 'accepted');
+  // Une place de moins disponible sur le trajet.
+  await updateDoc(doc(db, 'trips', request.tripId), { placesDispo: increment(-1) });
+}
+
+export async function refuseRequest(requestId: string): Promise<void> {
+  await setRequestStatus(requestId, 'refused');
 }
