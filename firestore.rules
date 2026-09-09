@@ -28,5 +28,16 @@ service cloud.firestore {
         && request.resource.data.commentaires.size() == resource.data.commentaires.size() + 1
         && request.resource.data.commentaires.hasAll(resource.data.commentaires);
     }
+
+    // Demandes de place en covoiturage : lisibles par tous les membres
+    // connectés (le conducteur doit voir les demandes reçues sur son
+    // trajet), créées uniquement par le demandeur pour lui-même et
+    // toujours au statut initial "pending".
+    match /rideRequests/{requestId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.passagerUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+    }
   }
 }

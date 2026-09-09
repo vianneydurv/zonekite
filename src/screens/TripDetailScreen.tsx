@@ -7,8 +7,11 @@ import type { CarpoolStackParamList } from '../navigation/CarpoolStackNavigator'
 import { spots } from '../data/spots';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
-import { getRequestedTripIds, requestSeat } from '../lib/rideRequests';
+import { getRequestedTripIds, getRequestsForTrips, requestSeat } from '../lib/rideRequests';
+import { getProfile } from '../lib/profileStorage';
 import type { Trajet } from '../types/trajet';
+import type { Profile } from '../types/profile';
+import type { RideRequest } from '../types/rideRequest';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'TripDetail'>;
 
@@ -20,13 +23,17 @@ function formatDate(iso: string) {
 export default function TripDetailScreen({ route, navigation }: Props) {
   const { tripId } = route.params;
   const [trip, setTrip] = useState<Trajet | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [requested, setRequested] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
+  const [requests, setRequests] = useState<RideRequest[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       getTrips().then((trips) => setTrip(trips.find((t) => t.id === tripId) ?? null));
       getRequestedTripIds().then((ids) => setRequested(ids.includes(tripId)));
+      getProfile().then(setProfile);
+      getRequestsForTrips([tripId]).then(setRequests);
     }, [tripId])
   );
 
@@ -34,10 +41,11 @@ export default function TripDetailScreen({ route, navigation }: Props) {
 
   const spot = spots.find((s) => s.id === trip.spotId);
   const placesTotal = trip.placesTotal ?? trip.placesDispo;
+  const isDriver = profile != null && trip.conducteurPrenom === profile.prenom;
 
   async function handleRequest() {
     if (requested) return;
-    await requestSeat(trip!.id);
+    await requestSeat(trip!.id, profile);
     setRequested(true);
     setShowSheet(true);
   }
@@ -105,38 +113,65 @@ export default function TripDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        {(trip.dejaABord?.length || requested) && (
+        {isDriver ? (
           <View style={styles.card}>
-            <Text style={styles.eyebrow}>DÉJÀ À BORD</Text>
-            <View style={styles.boardRow}>
-              {trip.dejaABord?.map((name) => (
-                <View key={name} style={styles.boardPerson}>
-                  <View style={styles.boardAvatar} />
-                  <Text style={styles.boardName}>{name}</Text>
-                </View>
-              ))}
-              {requested && (
-                <View style={styles.boardPerson}>
-                  <View style={[styles.boardAvatar, styles.boardAvatarMe]} />
-                  <Text style={styles.boardName}>Toi</Text>
-                </View>
-              )}
-            </View>
+            <Text style={styles.eyebrow}>DEMANDES REÇUES · {requests.length || 'AUCUNE'}</Text>
+            {requests.length === 0 ? (
+              <Text style={styles.emptyRequests}>Personne n'a encore demandé de place.</Text>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {requests.map((req) => (
+                  <View key={req.id} style={styles.requestRow}>
+                    {req.passagerPhotoUri ? (
+                      <Image source={{ uri: req.passagerPhotoUri }} style={styles.requestAvatar} />
+                    ) : (
+                      <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]} />
+                    )}
+                    <Text style={styles.requestName}>{req.passagerPrenom}</Text>
+                    <View style={styles.statusBadge}>
+                      <Text style={styles.statusBadgeText}>EN ATTENTE</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
+        ) : (
+          (trip.dejaABord?.length || requested) && (
+            <View style={styles.card}>
+              <Text style={styles.eyebrow}>DÉJÀ À BORD</Text>
+              <View style={styles.boardRow}>
+                {trip.dejaABord?.map((name) => (
+                  <View key={name} style={styles.boardPerson}>
+                    <View style={styles.boardAvatar} />
+                    <Text style={styles.boardName}>{name}</Text>
+                  </View>
+                ))}
+                {requested && (
+                  <View style={styles.boardPerson}>
+                    <View style={[styles.boardAvatar, styles.boardAvatarMe]} />
+                    <Text style={styles.boardName}>Toi</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          style={[styles.cta, requested && styles.ctaDisabled]}
-          onPress={handleRequest}
-          disabled={requested}
-        >
-          <Text style={[styles.ctaText, requested && styles.ctaTextDisabled]}>
-            {requested ? 'DEMANDE EN ATTENTE' : 'DEMANDER UNE PLACE'}
-          </Text>
-        </Pressable>
-      </View>
+      {!isDriver && (
+        <View style={styles.footer}>
+          <Pressable
+            style={[styles.cta, requested && styles.ctaDisabled]}
+            onPress={handleRequest}
+            disabled={requested}
+          >
+            <Text style={[styles.ctaText, requested && styles.ctaTextDisabled]}>
+              {requested ? 'DEMANDE EN ATTENTE' : 'DEMANDER UNE PLACE'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <Modal visible={showSheet} transparent animationType="fade">
         <View style={styles.sheetBackdrop}>
@@ -196,6 +231,13 @@ const styles = StyleSheet.create({
   boardAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#B9CBD6' },
   boardAvatarMe: { backgroundColor: colors.accent[100], borderWidth: 1.5, borderColor: colors.accent[500], borderStyle: 'dashed' },
   boardName: { fontFamily: typography.h3.fontFamily, fontSize: 11, color: colors.navy(0.65) },
+  emptyRequests: { ...typography.body, color: colors.navy(0.5) },
+  requestRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  requestAvatar: { width: 36, height: 36, borderRadius: 18 },
+  requestAvatarPlaceholder: { backgroundColor: '#CBD8E0' },
+  requestName: { flex: 1, fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FDF3E3' },
+  statusBadgeText: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: '#9A6200' },
   footer: { padding: 12, paddingBottom: 20, backgroundColor: colors.neutral.white, borderTopWidth: 1, borderTopColor: colors.navy(0.09) },
   cta: { backgroundColor: colors.accent[500], borderRadius: 13, paddingVertical: 16, alignItems: 'center' },
   ctaDisabled: { backgroundColor: '#F0F4F7' },
