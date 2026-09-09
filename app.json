@@ -29,10 +29,18 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ZoneKite a besoin d'accéder à vos photos pour choisir votre photo de profil."
+          "photosPermission": "ZoneKite a besoin d'accéder à vos photos pour choisir votre photo de profil.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9d28ae2b-4760-4de5-8710-713a80256735"
+      }
+    },
+    "owner": "feles-team"
   }
 }
