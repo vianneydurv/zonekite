@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
-import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CarpoolStackParamList } from '../navigation/CarpoolStackNavigator';
 import { spots } from '../data/spots';
 import { colors, typography } from '../theme';
-import { getTrips } from '../lib/tripsStorage';
+import { deleteTrip, getTrips } from '../lib/tripsStorage';
 import { acceptRequest, getMyRequests, getRequestsForTrips, refuseRequest, requestSeat } from '../lib/rideRequests';
 import { getProfile } from '../lib/profileStorage';
 import type { Trajet } from '../types/trajet';
@@ -66,6 +66,20 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   async function handleRefuse(request: RideRequest) {
     await refuseRequest(request.id);
     setRequests((rs) => rs.map((r) => (r.id === request.id ? { ...r, status: 'refused' } : r)));
+  }
+
+  function handleDelete() {
+    Alert.alert('Supprimer ce trajet ?', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteTrip(trip!.id);
+          navigation.goBack();
+        },
+      },
+    ]);
   }
 
   return (
@@ -190,7 +204,21 @@ export default function TripDetailScreen({ route, navigation }: Props) {
         )}
       </ScrollView>
 
-      {!isDriver && (
+      {isDriver ? (
+        <View style={styles.footer}>
+          <View style={styles.driverActionsRow}>
+            <Pressable
+              style={styles.editButton}
+              onPress={() => navigation.navigate('CreateTrip', { tripId: trip.id })}
+            >
+              <Text style={styles.editButtonText}>MODIFIER</Text>
+            </Pressable>
+            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+              <Text style={styles.deleteButtonText}>SUPPRIMER</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
         <View style={styles.footer}>
           <Pressable
             style={[styles.cta, myRequest && styles.ctaDisabled]}
@@ -283,6 +311,11 @@ const styles = StyleSheet.create({
   acceptButton: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, backgroundColor: colors.accent[500] },
   acceptButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 11.5, color: colors.neutral.white },
   footer: { padding: 12, paddingBottom: 20, backgroundColor: colors.neutral.white, borderTopWidth: 1, borderTopColor: colors.navy(0.09) },
+  driverActionsRow: { flexDirection: 'row', gap: 10 },
+  editButton: { flex: 1, backgroundColor: colors.navyBase, borderRadius: 13, paddingVertical: 16, alignItems: 'center' },
+  editButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 14, color: colors.neutral.white, letterSpacing: 0.3 },
+  deleteButton: { flex: 1, backgroundColor: '#FBE9E7', borderRadius: 13, paddingVertical: 16, alignItems: 'center' },
+  deleteButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 14, color: '#C0392B', letterSpacing: 0.3 },
   cta: { backgroundColor: colors.accent[500], borderRadius: 13, paddingVertical: 16, alignItems: 'center' },
   ctaDisabled: { backgroundColor: '#F0F4F7' },
   ctaText: { fontFamily: typography.h3.fontFamily, fontSize: 14, color: colors.neutral.white, letterSpacing: 0.3 },

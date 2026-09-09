@@ -7,17 +7,19 @@ service cloud.firestore {
     }
 
     // Trajets de covoiturage : visibles par tous les membres connectés,
-    // création libre. Le conducteur peut mettre à jour le nombre de places
-    // disponibles (ex. quand il accepte une demande de place) — identifié
-    // par conducteurUid, absent sur les trajets créés avant ce champ, donc
-    // ceux-là restent non modifiables. Pas d'autre modification/suppression
-    // pour l'instant (pas d'UI d'édition dans l'app).
+    // création libre. Le conducteur (identifié par conducteurUid, absent
+    // sur les trajets créés avant ce champ — ceux-là restent non
+    // modifiables) peut librement éditer ou supprimer son propre trajet,
+    // à condition de ne pas réattribuer conducteurUid à quelqu'un d'autre.
+    // Couvre aussi la mise à jour de placesDispo seule (acceptation d'une
+    // demande de place).
     match /trips/{tripId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
       allow update: if request.auth != null
         && resource.data.conducteurUid == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['placesDispo']);
+        && request.resource.data.conducteurUid == resource.data.conducteurUid;
+      allow delete: if request.auth != null && resource.data.conducteurUid == request.auth.uid;
     }
 
     // Sujets de forum : visibles par tous les membres connectés, création

@@ -14,7 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CarpoolStackParamList } from '../navigation/CarpoolStackNavigator';
 import { colors, typography } from '../theme';
 import { spots } from '../data/spots';
-import { addTrip } from '../lib/tripsStorage';
+import { addTrip, getTrips } from '../lib/tripsStorage';
 import { getProfile } from '../lib/profileStorage';
 import { auth } from '../lib/firebase';
 import { localDateIso } from '../lib/matching';
@@ -47,21 +47,41 @@ export default function CreateTripScreen({ navigation, route }: Props) {
   const [adresseDepart, setAdresseDepart] = useState('');
   const [vehicule, setVehicule] = useState('');
   const [places, setPlaces] = useState(1);
+  const [editingTrip, setEditingTrip] = useState<Trajet | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  const editingTripId = route.params?.tripId;
 
   useEffect(() => {
-    getProfile().then((profile) => {
-      if (profile?.ville) setAdresseDepart(profile.ville);
-    });
-  }, []);
-
-  useEffect(() => {
-    const params = route.params;
-    if (params?.date) {
-      const [y, m, d] = params.date.split('-').map(Number);
-      setSelectedDate(new Date(y, m - 1, d));
+    if (!editingTripId) {
+      getProfile().then((profile) => {
+        if (profile?.ville) setAdresseDepart(profile.ville);
+      });
+      const params = route.params;
+      if (params?.date) {
+        const [y, m, d] = params.date.split('-').map(Number);
+        setSelectedDate(new Date(y, m - 1, d));
+      }
+      if (params?.heureDepart) setHeureDepart(params.heureDepart);
+      if (params?.heureRetour) setHeureRetour(params.heureRetour);
+      setLoaded(true);
+      return;
     }
-    if (params?.heureDepart) setHeureDepart(params.heureDepart);
-    if (params?.heureRetour) setHeureRetour(params.heureRetour);
+    getTrips().then((trips) => {
+      const trip = trips.find((t) => t.id === editingTripId) ?? null;
+      setEditingTrip(trip);
+      if (trip) {
+        setSpotId(trip.spotId);
+        const [y, m, d] = trip.date.split('-').map(Number);
+        setSelectedDate(new Date(y, m - 1, d));
+        setHeureDepart(trip.heureDepart);
+        setHeureRetour(trip.heureRetourEstimee ?? null);
+        setAdresseDepart(trip.adresseDepart);
+        setVehicule(trip.vehicule ?? '');
+        setPlaces(trip.placesTotal ?? trip.placesDispo);
+      }
+      setLoaded(true);
+    });
   }, []);
 
   const selectedSpot = spots.find((s) => s.id === spotId);
@@ -71,24 +91,47 @@ export default function CreateTripScreen({ navigation, route }: Props) {
 
   const canSubmit = spotId != null && heureDepart != null && adresseDepart.trim().length > 0;
 
+  if (editingTripId && !loaded) return null;
+
   async function handleSubmit() {
     if (!canSubmit || !spotId || !heureDepart) return;
-    const profile = await getProfile();
-    const trip: Trajet = {
-      id: `${Date.now()}`,
-      spotId,
-      conducteurUid: auth.currentUser?.uid,
-      conducteurPrenom: profile?.prenom ?? 'Moi',
-      conducteurPhotoUri: profile?.photoUri,
-      date: localDateIso(selectedDate),
-      heureDepart,
-      heureRetourEstimee: heureRetour ?? undefined,
-      adresseDepart: adresseDepart.trim(),
-      vehicule: vehicule.trim() || undefined,
-      placesDispo: places,
-      placesTotal: places,
-    };
-    await addTrip(trip);
+
+    if (editingTrip) {
+      // On préserve les places déjà prises (acceptées) : si le conducteur
+      // réduit ou augmente le nombre de places, seules celles encore
+      // libres bougent.
+      const previousTotal = editingTrip.placesTotal ?? editingTrip.placesDispo;
+      const takenSeats = previousTotal - editingTrip.placesDispo;
+      const trip: Trajet = {
+        ...editingTrip,
+        spotId,
+        date: localDateIso(selectedDate),
+        heureDepart,
+        heureRetourEstimee: heureRetour ?? undefined,
+        adresseDepart: adresseDepart.trim(),
+        vehicule: vehicule.trim() || undefined,
+        placesDispo: Math.max(0, places - takenSeats),
+        placesTotal: places,
+      };
+      await addTrip(trip);
+    } else {
+      const profile = await getProfile();
+      const trip: Trajet = {
+        id: `${Date.now()}`,
+        spotId,
+        conducteurUid: auth.currentUser?.uid,
+        conducteurPrenom: profile?.prenom ?? 'Moi',
+        conducteurPhotoUri: profile?.photoUri,
+        date: localDateIso(selectedDate),
+        heureDepart,
+        heureRetourEstimee: heureRetour ?? undefined,
+        adresseDepart: adresseDepart.trim(),
+        vehicule: vehicule.trim() || undefined,
+        placesDispo: places,
+        placesTotal: places,
+      };
+      await addTrip(trip);
+    }
     navigation.goBack();
   }
 
@@ -180,7 +223,7 @@ export default function CreateTripScreen({ navigation, route }: Props) {
         disabled={!canSubmit}
         onPress={handleSubmit}
       >
-        <Text style={styles.submitButtonText}>PUBLIER LE TRAJET</Text>
+        <Text style={styles.submitButtonText}>{editingTripId ? 'ENREGISTRER' : 'PUBLIER LE TRAJET'}</Text>
       </Pressable>
 
       <Modal visible={showSpotPicker} animationType="slide">

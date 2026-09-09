@@ -7,7 +7,7 @@ import { colors, typography } from '../theme';
 export type CarpoolStackParamList = {
   CarpoolList: undefined;
   CreateTrip:
-    | { spotId?: string; date?: string; heureDepart?: string; heureRetour?: string }
+    | { spotId?: string; date?: string; heureDepart?: string; heureRetour?: string; tripId?: string }
     | undefined;
   TripDetail: { tripId: string };
 };
@@ -25,7 +25,11 @@ export default function CarpoolStackNavigator() {
       }}
     >
       <Stack.Screen name="CarpoolList" component={CarpoolListScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="CreateTrip" component={CreateTripScreen} options={{ title: 'Proposer un trajet' }} />
+      <Stack.Screen
+        name="CreateTrip"
+        component={CreateTripScreen}
+        options={({ route }) => ({ title: route.params?.tripId ? 'Modifier le trajet' : 'Proposer un trajet' })}
+      />
       <Stack.Screen name="TripDetail" component={TripDetailScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
