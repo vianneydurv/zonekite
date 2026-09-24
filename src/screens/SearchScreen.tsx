@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
@@ -24,7 +25,8 @@ import { distanceKm, geocodeAddress, type Coords } from '../lib/geocoding';
 import { spots } from '../data/spots';
 import type { Spot } from '../types/spot';
 
-const DISTANCE_STEP_KM = 25;
+const DISTANCE_STEP_KM = 10;
+const MAX_DISTANCE_KM = 500;
 const DEFAULT_DISTANCE_KM = 150;
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -135,7 +137,7 @@ export default function SearchScreen() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [startHour, setStartHour] = useState(10);
   const [endHour, setEndHour] = useState(18);
-  const [pickerMode, setPickerMode] = useState<'start' | 'end' | null>(null);
+  const [pickerMode, setPickerMode] = useState<'start' | 'end' | 'distance' | null>(null);
   const [adresseDepart, setAdresseDepart] = useState('');
   const [departDraft, setDepartDraft] = useState('');
   const [showDepartEditor, setShowDepartEditor] = useState(false);
@@ -177,10 +179,18 @@ export default function SearchScreen() {
   }, [departCoords]);
 
   const minDistanceKm = spotDistances ? Math.ceil(spotDistances[0].km) : 0;
+  // Premier palier de 10 km qui couvre bien le spot le plus proche.
+  const minDistanceStepKm = Math.max(DISTANCE_STEP_KM, Math.ceil(minDistanceKm / DISTANCE_STEP_KM) * DISTANCE_STEP_KM);
 
   useEffect(() => {
-    setDistanceMaxKm((prev) => Math.max(prev, minDistanceKm));
-  }, [minDistanceKm]);
+    setDistanceMaxKm((prev) => Math.max(prev, minDistanceStepKm));
+  }, [minDistanceStepKm]);
+
+  const distanceOptions = useMemo(() => {
+    const opts: number[] = [];
+    for (let d = minDistanceStepKm; d <= MAX_DISTANCE_KM; d += DISTANCE_STEP_KM) opts.push(d);
+    return opts;
+  }, [minDistanceStepKm]);
 
   useFocusEffect(
     useCallback(() => {
@@ -383,7 +393,7 @@ export default function SearchScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.listItem}>
+          <Pressable style={styles.listItem} onPress={() => setPickerMode('distance')}>
             <View>
               <Text style={styles.fieldLabel}>DISTANCE MAX</Text>
               {geocoding && !departCoords ? (
@@ -392,22 +402,8 @@ export default function SearchScreen() {
                 <Text style={styles.fieldValue}>{distanceMaxKm} km</Text>
               )}
             </View>
-            <View style={styles.stepperRow}>
-              <Pressable
-                style={[styles.stepperButton, distanceMaxKm <= minDistanceKm && styles.stepperButtonDisabled]}
-                disabled={distanceMaxKm <= minDistanceKm}
-                onPress={() => setDistanceMaxKm((d) => Math.max(minDistanceKm, d - DISTANCE_STEP_KM))}
-              >
-                <Ionicons name="remove" size={18} color={colors.ocean[900]} />
-              </Pressable>
-              <Pressable
-                style={styles.stepperButton}
-                onPress={() => setDistanceMaxKm((d) => d + DISTANCE_STEP_KM)}
-              >
-                <Ionicons name="add" size={18} color={colors.ocean[900]} />
-              </Pressable>
-            </View>
-          </View>
+            <Ionicons name="chevron-down" size={16} color={colors.neutral.textSecondary} />
+          </Pressable>
           {spotDistances && (
             <Text style={styles.hint}>Spot le plus proche : {minDistanceKm} km</Text>
           )}
@@ -495,29 +491,41 @@ export default function SearchScreen() {
 
       <Modal visible={pickerMode !== null} transparent animationType="fade">
         <Pressable style={styles.modalBackdrop} onPress={() => setPickerMode(null)}>
-          <View style={styles.modalSheet}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>
-              {pickerMode === 'start' ? 'Heure de début' : 'Heure de fin'}
+              {pickerMode === 'start' && 'Heure de début'}
+              {pickerMode === 'end' && 'Heure de fin'}
+              {pickerMode === 'distance' && 'Distance max'}
             </Text>
-            <FlatList
-              data={HOURS.filter((h) =>
-                pickerMode === 'start' ? h < endHour : h > startHour
-              )}
-              keyExtractor={(h) => String(h)}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.modalOption}
-                  onPress={() => {
-                    if (pickerMode === 'start') setStartHour(item);
-                    else setEndHour(item);
-                    setPickerMode(null);
-                  }}
-                >
-                  <Text style={styles.modalOptionText}>{formatHour(item)}</Text>
-                </Pressable>
-              )}
-            />
-          </View>
+            {(pickerMode === 'start' || pickerMode === 'end') && (
+              <Picker
+                selectedValue={pickerMode === 'start' ? startHour : endHour}
+                onValueChange={(value) => {
+                  if (pickerMode === 'start') setStartHour(Number(value));
+                  else setEndHour(Number(value));
+                }}
+                itemStyle={styles.wheelItem}
+              >
+                {HOURS.filter((h) => (pickerMode === 'start' ? h < endHour : h > startHour)).map((h) => (
+                  <Picker.Item key={h} label={formatHour(h)} value={h} />
+                ))}
+              </Picker>
+            )}
+            {pickerMode === 'distance' && (
+              <Picker
+                selectedValue={distanceMaxKm}
+                onValueChange={(value) => setDistanceMaxKm(Number(value))}
+                itemStyle={styles.wheelItem}
+              >
+                {distanceOptions.map((d) => (
+                  <Picker.Item key={d} label={`${d} km`} value={d} />
+                ))}
+              </Picker>
+            )}
+            <Pressable style={styles.departConfirmButton} onPress={() => setPickerMode(null)}>
+              <Text style={styles.departConfirmText}>VALIDER</Text>
+            </Pressable>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -737,18 +745,6 @@ const styles = StyleSheet.create({
   },
   linkText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.blue },
   fieldValuePlaceholder: { ...typography.body, color: colors.neutral.textSecondary, marginTop: 4 },
-  stepperRow: { flexDirection: 'row', gap: 8 },
-  stepperButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.neutral.background,
-    borderWidth: 1,
-    borderColor: colors.neutral.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperButtonDisabled: { opacity: 0.4 },
   hint: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 6, marginLeft: 2 },
   savedSearchesLink: { ...typography.body, color: colors.blue, textAlign: 'center', marginTop: 16, fontFamily: typography.h3.fontFamily },
   searchButton: {
@@ -780,8 +776,7 @@ const styles = StyleSheet.create({
     maxHeight: '60%',
   },
   modalTitle: { ...typography.h3, color: colors.navyBase, marginBottom: 12 },
-  modalOption: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.neutral.border },
-  modalOptionText: { ...typography.body, color: colors.navyBase, textAlign: 'center' },
+  wheelItem: { color: colors.navyBase, fontSize: 20 },
   departInput: {
     backgroundColor: colors.neutral.background,
     borderRadius: 12,

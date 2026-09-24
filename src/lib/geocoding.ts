@@ -19,6 +19,34 @@ export async function geocodeAddress(query: string): Promise<Coords | null> {
   return { lat, lon };
 }
 
+export interface CitySuggestion {
+  // Nom stocké dans le profil (compatible avec geocodeAddress ailleurs).
+  name: string;
+  // Libellé affiché dans le menu déroulant, avec code postal pour lever les
+  // ambiguïtés entre communes homonymes.
+  label: string;
+}
+
+// Suggestions de communes françaises (type=municipality restreint aux
+// villes, pas aux adresses précises) — pour faire confirmer la ville par
+// l'utilisateur via un menu déroulant plutôt que de la laisser saisir un nom
+// libre qui peut échouer silencieusement au géocodage plus tard.
+export async function searchCitySuggestions(query: string, limit = 5): Promise<CitySuggestion[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  const url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(trimmed)}&type=municipality&limit=${limit}`;
+  const response = await fetch(url);
+  if (!response.ok) return [];
+  const json = await response.json();
+  const features: any[] = json.features ?? [];
+  return features.map((f) => {
+    const name: string = f.properties.name ?? f.properties.label;
+    const postcode: string | undefined = f.properties.postcode;
+    return { name, label: postcode ? `${name} (${postcode})` : name };
+  });
+}
+
 // Distance à vol d'oiseau (km), formule de Haversine.
 export function distanceKm(a: Coords, b: Coords): number {
   const R = 6371;

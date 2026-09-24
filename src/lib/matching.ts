@@ -70,6 +70,25 @@ function tideMatches(contrainte: TideConstraint, heightFraction: number): boolea
   }
 }
 
+// Fenêtre favorable sur l'axe basse mer (0) → pleine mer (100), alignée sur
+// les seuils de tideMatches ci-dessus — pour l'affichage de la barre marée.
+// null = pas de fenêtre précise à mettre en avant (navigable à toute marée,
+// contrainte variable ou non documentée).
+export function tideIdealZone(contrainte: TideConstraint): { left: number; width: number } | null {
+  switch (contrainte) {
+    case 'maree_haute':
+      return { left: 75, width: 25 };
+    case 'maree_basse':
+      return { left: 0, width: 25 };
+    case 'mi_maree_haute':
+      return { left: 50, width: 50 };
+    case 'mi_maree_basse':
+      return { left: 0, width: 50 };
+    default:
+      return null;
+  }
+}
+
 function directionMatches(favorables: CompassDirection[] | null, dir: CompassDirection): boolean {
   if (!favorables || favorables.length === 0) return true;
   if (favorables.includes(dir)) return true;
@@ -145,6 +164,8 @@ export interface HourCondition {
   windGustKn: number;
   windDir: CompassDirection;
   tideLabel: string;
+  // 0 = basse mer, 1 = pleine mer ; null si le spot n'a pas de mareeRef.
+  tideHeightFraction: number | null;
   level: 'bon' | 'moyen' | 'mauvais';
   // Détail par critère — pour signaler ce qui bloque la navigabilité dans
   // l'UI (ex. vent OK mais marée hors fenêtre => marée en rouge).
@@ -166,6 +187,7 @@ export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<
         windGustKn: hour.windGustKn,
         windDir: hour.windDir,
         tideLabel: tide ? tideLabelFor(tide.heightFraction, tide.rising) : 'Marée inconnue',
+        tideHeightFraction: tide ? tide.heightFraction : null,
         level: evaluation.level,
         windOk: evaluation.windOk,
         dirOk: evaluation.dirOk,

@@ -10,6 +10,10 @@ function avatarColor(seed: string) {
   return AVATAR_COLORS[h];
 }
 
+function initials(name: string) {
+  return name.trim().charAt(0).toUpperCase();
+}
+
 function formatRelative(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const hours = Math.round(diffMs / 3600000);
@@ -23,7 +27,9 @@ export default function PostCard({ post, onPress }: { post: ForumPost; onPress?:
   const commentCount = post.commentCount ?? post.commentaires?.length ?? 0;
   return (
     <Pressable style={styles.row} onPress={onPress}>
-      <View style={[styles.avatar, { backgroundColor: avatarColor(post.auteurPrenom) }]} />
+      <View style={[styles.avatar, { backgroundColor: avatarColor(post.auteurPrenom) }]}>
+        <Text style={styles.avatarText}>{initials(post.auteurPrenom)}</Text>
+      </View>
       <View style={styles.body}>
         <View style={styles.topRow}>
           <Text style={styles.titre} numberOfLines={1}>{post.titre}</Text>
@@ -52,7 +58,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.navy(0.07),
   },
-  avatar: { width: 42, height: 42, borderRadius: 21, flexShrink: 0 },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontFamily: typography.h1.fontFamily, fontSize: 15, color: colors.navyBase },
   body: { flex: 1, minWidth: 0 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   titre: { fontFamily: typography.h1.fontFamily, fontSize: 14.5, color: colors.navyBase, flexShrink: 1 },

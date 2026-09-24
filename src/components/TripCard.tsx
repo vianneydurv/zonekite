@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Trajet } from '../types/trajet';
+import { isRemotePhoto } from '../lib/cloudinary';
 import { spots } from '../data/spots';
 import { colors, typography } from '../theme';
 
@@ -18,7 +19,7 @@ export default function TripCard({ trip, onPress }: { trip: Trajet; onPress?: ()
   return (
     <Pressable style={[styles.card, isFull && styles.cardFull]} onPress={onPress} disabled={isFull}>
       <View style={styles.topRow}>
-        {trip.conducteurPhotoUri ? (
+        {isRemotePhoto(trip.conducteurPhotoUri) ? (
           <Image source={{ uri: trip.conducteurPhotoUri }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, { backgroundColor: avatarColor(trip.conducteurPrenom) }]} />

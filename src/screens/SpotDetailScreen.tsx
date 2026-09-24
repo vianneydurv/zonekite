@@ -12,6 +12,7 @@ import {
   getHourlyConditions,
   getSpotCondition,
   localDateIso,
+  tideIdealZone,
   type HourCondition,
   type SpotCondition,
 } from '../lib/matching';
@@ -98,9 +99,13 @@ export default function SpotDetailScreen({ route }: Props) {
 
   const windMin = spot.ventMinNoeuds ?? DEFAULT_WIND_MIN_KN;
   const windMax = spot.ventMaxNoeuds ?? DEFAULT_WIND_MAX_KN;
-  const windPct = selected
-    ? Math.max(0, Math.min(100, ((selected.windSpeedKn - windMin) / (windMax - windMin)) * 100))
-    : 0;
+  // Échelle absolue (0 → au moins 35 nds, ou plus si le plafond du spot le
+  // dépasse) pour que le curseur puisse se placer visiblement en dehors de
+  // la zone idéale (trop peu / trop de vent), au lieu d'être collé à un bord.
+  const windScaleMax = Math.max(windMax + 8, 35);
+  const knToPct = (kn: number) => Math.max(0, Math.min(100, (kn / windScaleMax) * 100));
+  const windIdealZone = { left: knToPct(windMin), width: knToPct(windMax) - knToPct(windMin) };
+  const windPct = selected ? knToPct(selected.windSpeedKn) : 0;
   const gustDelta = selected ? selected.windGustKn - selected.windSpeedKn : 0;
   const isGusty = gustDelta >= GUST_THRESHOLD_KN;
   const windDirPct = selected ? directionToBarPercent(selected.windDir) : 50;
@@ -112,6 +117,8 @@ export default function SpotDetailScreen({ route }: Props) {
     const max = Math.max(...pcts);
     return { left: min, width: Math.max(max - min, 6) };
   })();
+  const tideZone = tideIdealZone(spot.contrainteMaree);
+  const tidePct = selected?.tideHeightFraction != null ? selected.tideHeightFraction * 100 : 50;
 
   const hero = (
     <View>
@@ -212,17 +219,22 @@ export default function SpotDetailScreen({ route }: Props) {
             <View style={styles.barLabelRow}>
               <Text style={styles.barLabel}>Force du vent</Text>
               <Text style={[styles.barValue, !selected.windOk && styles.barValueBlocking]}>
-                {selected.windSpeedKn} nds
+                {selected.windSpeedKn} nds{' '}
+                <Text style={styles.barValueMuted}>/ idéal {windMin}–{windMax} nds</Text>
               </Text>
             </View>
             <View style={styles.barTrack}>
               <View
                 style={[
                   styles.barIdealZone,
-                  { left: '20%', width: '60%' },
+                  { left: `${windIdealZone.left}%`, width: `${windIdealZone.width}%` },
                 ]}
               />
               <View style={[styles.barMarker, { left: `${windPct}%` }]} />
+            </View>
+            <View style={styles.dirScaleRow}>
+              <Text style={styles.dirScaleLabel}>0</Text>
+              <Text style={styles.dirScaleLabel}>{windScaleMax} nds</Text>
             </View>
           </View>
 
@@ -257,11 +269,26 @@ export default function SpotDetailScreen({ route }: Props) {
               <Text style={styles.barLabel}>Marée</Text>
               <Text style={[styles.barValue, !selected.tideOk && styles.barValueBlocking]}>
                 {selected.tideLabel}
+                {tideZone && (
+                  <Text style={styles.barValueMuted}> / idéal {TIDE_LABELS[spot.contrainteMaree]}</Text>
+                )}
               </Text>
             </View>
             <View style={styles.barTrack}>
-              <View style={[styles.barIdealZone, styles.barIdealZoneTide, { left: '20%', width: '46%' }]} />
-              <View style={[styles.barMarker, styles.barMarkerTide, { left: '34%' }]} />
+              {tideZone && (
+                <View
+                  style={[
+                    styles.barIdealZone,
+                    styles.barIdealZoneTide,
+                    { left: `${tideZone.left}%`, width: `${tideZone.width}%` },
+                  ]}
+                />
+              )}
+              <View style={[styles.barMarker, styles.barMarkerTide, { left: `${tidePct}%` }]} />
+            </View>
+            <View style={styles.dirScaleRow}>
+              <Text style={styles.dirScaleLabel}>BASSE MER</Text>
+              <Text style={styles.dirScaleLabel}>PLEINE MER</Text>
             </View>
           </View>
 

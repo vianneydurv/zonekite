@@ -24,7 +24,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(6, 46, 69, 0.55)',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: '30%',
   },
   title: { ...typography.h1, color: colors.neutral.white, letterSpacing: 2 },
 });

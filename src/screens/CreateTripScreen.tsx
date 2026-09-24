@@ -26,6 +26,10 @@ const HOURS = Array.from({ length: 17 }, (_, i) => i + 6).flatMap((h) =>
   [0, 15, 30, 45].map((m) => `${h}h${String(m).padStart(2, '0')}`)
 );
 
+// Un covoit kite reste une voiture avec du matériel à bord (ailes, boards) :
+// au-delà de 5 passagers ce n'est de toute façon plus réaliste.
+const MAX_PLACES = 5;
+
 function nextDays(count: number) {
   return Array.from({ length: count }, (_, i) => {
     const d = new Date();
@@ -213,7 +217,10 @@ export default function CreateTripScreen({ navigation, route }: Props) {
           <Ionicons name="remove" size={20} color={colors.ocean[900]} />
         </Pressable>
         <Text style={styles.stepperValue}>{places}</Text>
-        <Pressable style={styles.stepperButton} onPress={() => setPlaces((p) => p + 1)}>
+        <Pressable
+          style={styles.stepperButton}
+          onPress={() => setPlaces((p) => Math.min(MAX_PLACES, p + 1))}
+        >
           <Ionicons name="add" size={20} color={colors.ocean[900]} />
         </Pressable>
       </View>

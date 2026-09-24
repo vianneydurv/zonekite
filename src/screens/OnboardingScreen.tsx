@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -16,6 +17,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
 import { saveProfile } from '../lib/profileStorage';
+import { searchCitySuggestions, type CitySuggestion } from '../lib/geocoding';
+import { isRemotePhoto, uploadProfilePhoto } from '../lib/cloudinary';
+import { syncDriverInfoOnMyTrips } from '../lib/tripsStorage';
+import { auth } from '../lib/firebase';
 import MaterielSection from '../components/MaterielSection';
 import {
   AUTRE,
@@ -43,16 +48,54 @@ interface Props {
 
 export default function OnboardingScreen({ onComplete, initialProfile, onCancel }: Props) {
   const [prenom, setPrenom] = useState(initialProfile?.prenom ?? '');
-  const [photoUri, setPhotoUri] = useState<string | null>(initialProfile?.photoUri ?? null);
+  const [photoUri, setPhotoUri] = useState<string | null>(
+    // Une ancienne photo locale (file://…) n'est visible par personne
+    // d'autre : on la considère absente pour forcer un nouvel envoi.
+    isRemotePhoto(initialProfile?.photoUri) ? initialProfile.photoUri : null
+  );
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [niveau, setNiveau] = useState<NiveauKite | null>(initialProfile?.niveau ?? null);
   const [ville, setVille] = useState(initialProfile?.ville ?? '');
+  // Ville déjà validée par le profil existant (édition) ou tout juste
+  // choisie dans le menu déroulant — sinon un nom mal orthographié peut
+  // échouer silencieusement au géocodage et bloquer toutes les recherches.
+  const [villeConfirmed, setVilleConfirmed] = useState((initialProfile?.ville ?? '').length > 0);
+  const [villeSuggestions, setVilleSuggestions] = useState<CitySuggestion[]>([]);
   const [ailes, setAiles] = useState<Aile[]>(initialProfile?.materiel.ailes ?? []);
   const [boards, setBoards] = useState<Board[]>(initialProfile?.materiel.boards ?? []);
   const [autres, setAutres] = useState<AutreMateriel[]>(initialProfile?.materiel.autres ?? []);
   const isEditing = initialProfile != null;
 
   const canSubmit =
-    prenom.trim().length > 0 && photoUri != null && niveau != null && ville.trim().length > 0;
+    prenom.trim().length > 0 && photoUri != null && niveau != null && villeConfirmed && !uploadingPhoto;
+
+  useEffect(() => {
+    if (villeConfirmed || ville.trim().length < 2) {
+      setVilleSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchCitySuggestions(ville).then((results) => {
+        if (!cancelled) setVilleSuggestions(results);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [ville, villeConfirmed]);
+
+  function onVilleChange(text: string) {
+    setVille(text);
+    setVilleConfirmed(false);
+  }
+
+  function selectVille(suggestion: CitySuggestion) {
+    setVille(suggestion.name);
+    setVilleConfirmed(true);
+    setVilleSuggestions([]);
+  }
 
   async function pickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -69,8 +112,19 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+    if (result.canceled || !result.assets[0]) return;
+
+    // Upload vers Cloudinary : une uri locale ne serait visible que sur cet
+    // appareil, inutilisable pour montrer la photo aux autres utilisateurs
+    // (ex. sur les trajets de covoiturage).
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadProfilePhoto(result.assets[0].uri);
+      setPhotoUri(url);
+    } catch {
+      Alert.alert('Échec de l\'envoi', "La photo n'a pas pu être envoyée, réessaie.");
+    } finally {
+      setUploadingPhoto(false);
     }
   }
 
@@ -88,6 +142,11 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
       },
     };
     await saveProfile(profile);
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      // Non bloquant : un échec ici ne doit pas empêcher d'enregistrer le profil.
+      await syncDriverInfoOnMyTrips(uid, profile.prenom, profile.photoUri).catch(() => {});
+    }
     onComplete(profile);
   }
 
@@ -116,8 +175,12 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
               : 'Un profil complet instaure la confiance avec les autres membres, notamment pour le covoiturage.'}
           </Text>
 
-          <Pressable style={styles.photoPicker} onPress={pickPhoto}>
-            {photoUri ? (
+          <Pressable style={styles.photoPicker} onPress={pickPhoto} disabled={uploadingPhoto}>
+            {uploadingPhoto ? (
+              <View style={styles.photoPlaceholder}>
+                <ActivityIndicator color={colors.ocean[700]} />
+              </View>
+            ) : photoUri ? (
               <Image source={{ uri: photoUri }} style={styles.photo} />
             ) : (
               <View style={styles.photoPlaceholder}>
@@ -125,7 +188,7 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
               </View>
             )}
             <Text style={styles.photoLabel}>
-              {photoUri ? 'Changer la photo' : 'Ajouter une photo *'}
+              {uploadingPhoto ? 'Envoi en cours…' : photoUri ? 'Changer la photo' : 'Ajouter une photo *'}
             </Text>
           </Pressable>
 
@@ -157,10 +220,31 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
           <TextInput
             style={styles.input}
             value={ville}
-            onChangeText={setVille}
+            onChangeText={onVilleChange}
             placeholder="Ta ville"
             placeholderTextColor={colors.neutral.textSecondary}
           />
+          {villeConfirmed ? (
+            <View style={styles.villeConfirmedRow}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.ocean[700]} />
+              <Text style={styles.villeConfirmedText}>Ville confirmée</Text>
+            </View>
+          ) : (
+            villeSuggestions.length > 0 && (
+              <View style={styles.villeDropdown}>
+                {villeSuggestions.map((s) => (
+                  <Pressable
+                    key={s.label}
+                    style={styles.villeOption}
+                    onPress={() => selectVille(s)}
+                  >
+                    <Ionicons name="location-outline" size={15} color={colors.ocean[700]} />
+                    <Text style={styles.villeOptionText}>{s.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )
+          )}
 
           <MaterielSection<Aile>
             title="AILES · OPTIONNEL"
@@ -277,6 +361,26 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.ocean[900],
   },
+  villeConfirmedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7 },
+  villeConfirmedText: { ...typography.caption, color: colors.ocean[700] },
+  villeDropdown: {
+    backgroundColor: colors.neutral.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.neutral.border,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  villeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral.border,
+  },
+  villeOptionText: { ...typography.body, color: colors.ocean[900] },
   niveauRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   niveauChip: {
     borderRadius: 20,

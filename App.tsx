@@ -18,6 +18,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import LoadingScreen from './src/screens/LoadingScreen';
 import { subscribeToAuth } from './src/lib/auth';
 import { getProfile } from './src/lib/profileStorage';
+import { isRemotePhoto } from './src/lib/cloudinary';
 import type { Profile } from './src/types/profile';
 
 export default function App() {
@@ -64,6 +65,11 @@ export default function App() {
         <AuthScreen />
       ) : profile === null ? (
         <OnboardingScreen onComplete={setProfile} />
+      ) : profile && !isRemotePhoto(profile.photoUri) ? (
+        // Profil créé avant l'hébergement des photos sur Cloudinary : sa
+        // photo locale n'est visible par personne d'autre, on redemande
+        // d'en choisir une (le reste du profil est pré-rempli).
+        <OnboardingScreen initialProfile={profile} onComplete={setProfile} />
       ) : (
         <RootNavigator />
       )}

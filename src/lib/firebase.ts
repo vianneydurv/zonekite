@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth } from 'firebase/auth';
+import { initializeAuth, browserLocalPersistence } from 'firebase/auth';
 // Bug connu des types du SDK Firebase web (moduleResolution "bundler") :
 // getReactNativePersistence existe bien au runtime (Metro résout la version
 // React Native), mais son type n'est pas exposé par le module "firebase/auth".
@@ -7,6 +7,7 @@ import { initializeAuth } from 'firebase/auth';
 import { getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Clé publique du SDK web Firebase : pas un secret, elle est protégée par les
 // règles de sécurité Firestore/Auth, pas par sa confidentialité.
@@ -21,8 +22,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+// getReactNativePersistence(AsyncStorage) n'existe pas dans le build web du
+// SDK Firebase : bascule sur la persistance navigateur standard sur cette
+// plateforme (comportement natif iOS/Android inchangé).
 export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
+  persistence: Platform.OS === 'web' ? browserLocalPersistence : getReactNativePersistence(AsyncStorage),
 });
 
 // La base Firestore a été créée sous l'ID "zonekite" (pas l'ID par défaut

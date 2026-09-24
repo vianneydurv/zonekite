@@ -10,6 +10,7 @@ import { deleteTrip, getTrips } from '../lib/tripsStorage';
 import { acceptRequest, getMyRequests, getRequestsForTrips, refuseRequest, requestSeat } from '../lib/rideRequests';
 import { getProfile } from '../lib/profileStorage';
 import type { Trajet } from '../types/trajet';
+import { isRemotePhoto } from '../lib/cloudinary';
 import type { Profile } from '../types/profile';
 import type { RideRequest } from '../types/rideRequest';
 
@@ -95,7 +96,7 @@ export default function TripDetailScreen({ route, navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <View style={styles.driverRow}>
-            {trip.conducteurPhotoUri ? (
+            {isRemotePhoto(trip.conducteurPhotoUri) ? (
               <Image source={{ uri: trip.conducteurPhotoUri }} style={styles.driverPhoto} />
             ) : (
               <View style={styles.driverPhotoPlaceholder} />
@@ -154,7 +155,7 @@ export default function TripDetailScreen({ route, navigation }: Props) {
               <View style={{ gap: 10 }}>
                 {requests.map((req) => (
                   <View key={req.id} style={styles.requestRow}>
-                    {req.passagerPhotoUri ? (
+                    {isRemotePhoto(req.passagerPhotoUri) ? (
                       <Image source={{ uri: req.passagerPhotoUri }} style={styles.requestAvatar} />
                     ) : (
                       <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]} />
