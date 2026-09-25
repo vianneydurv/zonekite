@@ -39,7 +39,13 @@ export async function deleteTrip(tripId: string): Promise<void> {
 // trajets déjà publiés garderaient l'ancienne photo.
 export async function syncDriverInfoOnMyTrips(uid: string, prenom: string, photoUri: string): Promise<void> {
   const snap = await getDocs(query(tripsCollection, where('conducteurUid', '==', uid)));
+  // Seuls les trajets réellement désynchronisés sont réécrits : appelé à
+  // chaque lancement de l'app, ça évite des écritures inutiles.
+  const stale = snap.docs.filter((d) => {
+    const trip = d.data() as Trajet;
+    return trip.conducteurPrenom !== prenom || trip.conducteurPhotoUri !== photoUri;
+  });
   await Promise.all(
-    snap.docs.map((d) => updateDoc(d.ref, { conducteurPrenom: prenom, conducteurPhotoUri: photoUri }))
+    stale.map((d) => updateDoc(d.ref, { conducteurPrenom: prenom, conducteurPhotoUri: photoUri }))
   );
 }

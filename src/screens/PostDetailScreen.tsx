@@ -26,18 +26,6 @@ import type { Trajet } from '../types/trajet';
 
 type Props = NativeStackScreenProps<ForumStackParamList, 'PostDetail'>;
 
-const AVATAR_COLORS = ['#CBD8E0', '#B9CBD6', '#A8BFCC', '#97B3C2'];
-
-function avatarColor(seed: string) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h + seed.charCodeAt(i)) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[h];
-}
-
-function initials(name: string) {
-  return name.trim().charAt(0).toUpperCase();
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', {
     weekday: 'long',
@@ -165,9 +153,6 @@ export default function PostDetailScreen({ route }: Props) {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.card}>
             <View style={styles.authorRow}>
-              <View style={[styles.avatar, { backgroundColor: avatarColor(post.auteurPrenom) }]}>
-                <Text style={styles.avatarText}>{initials(post.auteurPrenom)}</Text>
-              </View>
               <View>
                 <Text style={styles.authorName}>{post.auteurPrenom}</Text>
                 <Text style={styles.authorMeta}>{formatDate(post.date)}</Text>
@@ -184,9 +169,6 @@ export default function PostDetailScreen({ route }: Props) {
             return (
               <View key={comment.id} style={[styles.card, styles.replyCard]}>
                 <View style={styles.authorRow}>
-                  <View style={[styles.avatarSmall, { backgroundColor: avatarColor(comment.auteurPrenom) }]}>
-                    <Text style={styles.avatarTextSmall}>{initials(comment.auteurPrenom)}</Text>
-                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.authorNameSmall}>{comment.auteurPrenom}</Text>
                     <Text style={styles.authorMetaSmall}>{formatDate(comment.date)}</Text>
@@ -302,10 +284,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.neutral.white, borderRadius: 14, padding: 14 },
   replyCard: { marginLeft: 20 },
   authorRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  avatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  avatarSmall: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontFamily: typography.h1.fontFamily, fontSize: 13, color: colors.navyBase },
-  avatarTextSmall: { fontFamily: typography.h1.fontFamily, fontSize: 11.5, color: colors.navyBase },
   authorName: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase },
   authorMeta: { ...typography.body, color: colors.navy(0.45), marginTop: 1 },
   authorNameSmall: { fontFamily: typography.h3.fontFamily, fontSize: 13, color: colors.navyBase },

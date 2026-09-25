@@ -19,6 +19,7 @@ import LoadingScreen from './src/screens/LoadingScreen';
 import { subscribeToAuth } from './src/lib/auth';
 import { getProfile } from './src/lib/profileStorage';
 import { isRemotePhoto } from './src/lib/cloudinary';
+import { syncDriverInfoOnMyTrips } from './src/lib/tripsStorage';
 import type { Profile } from './src/types/profile';
 
 export default function App() {
@@ -43,6 +44,14 @@ export default function App() {
   useEffect(() => {
     if (user) getProfile().then(setProfile);
   }, [user]);
+
+  // Rattrapage : un conducteur dont la photo est déjà hébergée peut avoir
+  // des trajets publiés avant (photo locale illisible par les autres).
+  useEffect(() => {
+    if (user && profile && isRemotePhoto(profile.photoUri)) {
+      syncDriverInfoOnMyTrips(user.uid, profile.prenom, profile.photoUri).catch(() => {});
+    }
+  }, [user, profile]);
 
   // Laisse la photo de l'écran de chargement visible au moins 3 secondes,
   // même si l'auth/le profil se résolvent plus vite.

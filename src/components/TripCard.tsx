@@ -12,6 +12,20 @@ function avatarColor(seed: string) {
   return AVATAR_COLORS[h];
 }
 
+// « Aujourd'hui » / « Demain » plutôt qu'une date pour les départs
+// imminents, sinon jour + date courts (ex. « Sam. 27 sept. »).
+function formatDepartDay(dateIso: string): string {
+  const [y, m, d] = dateIso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((date.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays === 0) return "Aujourd'hui";
+  if (diffDays === 1) return 'Demain';
+  const label = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export default function TripCard({ trip, onPress }: { trip: Trajet; onPress?: () => void }) {
   const spot = spots.find((s) => s.id === trip.spotId);
   const isFull = trip.placesDispo <= 0;
@@ -42,7 +56,8 @@ export default function TripCard({ trip, onPress }: { trip: Trajet; onPress?: ()
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.fieldLabel}>DÉPART</Text>
-          <Text style={styles.depart}>{trip.heureDepart} · {trip.adresseDepart}</Text>
+          <Text style={styles.depart}>{formatDepartDay(trip.date)} · {trip.heureDepart}</Text>
+          <Text style={styles.departAddress} numberOfLines={1}>{trip.adresseDepart}</Text>
         </View>
       </View>
 
@@ -86,6 +101,7 @@ const styles = StyleSheet.create({
   fieldLabel: { ...typography.caption, color: colors.navy(0.45) },
   destination: { fontFamily: typography.h1.fontFamily, fontSize: 16, color: colors.navyBase, marginTop: 2 },
   depart: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase, marginTop: 2 },
+  departAddress: { ...typography.body, color: colors.navy(0.5), marginTop: 1, maxWidth: 170, textAlign: 'right' },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   seats: { fontFamily: typography.h3.fontFamily, fontSize: 11.5, color: colors.navy(0.6) },
   demandButton: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.accent[500] },

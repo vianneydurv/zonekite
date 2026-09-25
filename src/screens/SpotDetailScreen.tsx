@@ -1,31 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Linking, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
-import {
-  DEFAULT_WIND_MAX_KN,
-  DEFAULT_WIND_MIN_KN,
-  directionToBarPercent,
-  getHourlyConditions,
-  getSpotCondition,
-  localDateIso,
-  tideIdealZone,
-  type HourCondition,
-  type SpotCondition,
-} from '../lib/matching';
+import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
+import ForecastTable, { TIDE_LABELS } from '../components/ForecastTable';
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import { spotPhotos } from '../data/spotPhotos';
 import type { Spot } from '../types/spot';
-
-// Plage horaire pertinente pour le kite (cohérente avec la recherche).
-const DISPLAY_HOURS_START = 6;
-const DISPLAY_HOURS_END = 22;
-// Écart rafale - vent moyen (nds) à partir duquel on considère le vent rafaleux.
-const GUST_THRESHOLD_KN = 6;
-const LEVEL_COLORS = { bon: '#17A673', moyen: '#F0A020', mauvais: '#E04B3C' };
 
 interface Props {
   route: {
@@ -44,16 +27,6 @@ function formatHourNumber(h: number): string {
   return `${hh}h${String(mm).padStart(2, '0')}`;
 }
 
-const TIDE_LABELS: Record<string, string> = {
-  toutes: 'Navigable à toute marée',
-  maree_haute: 'Marée haute',
-  maree_basse: 'Marée basse',
-  mi_maree_haute: 'Mi-marée à marée haute',
-  mi_maree_basse: 'Mi-marée à marée basse',
-  variable: 'Variable selon la zone',
-  inconnue: 'Non documenté',
-};
-
 function openItinerary(spot: Spot) {
   const label = encodeURIComponent(spot.nom);
   Linking.openURL(`https://maps.apple.com/?daddr=${spot.lat},${spot.lon}&q=${label}&dirflg=d`);
@@ -65,8 +38,8 @@ export default function SpotDetailScreen({ route }: Props) {
   const [fav, setFav] = useState(false);
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [condition, setCondition] = useState<SpotCondition | null>(null);
-  const [hourly, setHourly] = useState<HourCondition[]>([]);
-  const [selectedHourIndex, setSelectedHourIndex] = useState(0);
+  // Jour affiché dans le tableau : le bandeau verdict suit ce jour-là.
+  const [dayIso, setDayIso] = useState(searchDate ?? localDateIso(new Date()));
 
   useFocusEffect(
     useCallback(() => {
@@ -76,49 +49,13 @@ export default function SpotDetailScreen({ route }: Props) {
   );
 
   useEffect(() => {
-    // Prévisions calées sur le jour recherché (sinon aujourd'hui si la
-    // fiche est ouverte hors d'une recherche, ex. depuis les favoris).
-    const dateIso = searchDate ?? localDateIso(new Date());
-    const hourRange = searchStartHour != null && searchEndHour != null
+    // Le créneau horaire recherché ne s'applique qu'au jour recherché ;
+    // un autre jour choisi dans le tableau est jugé sur la journée entière.
+    const hourRange = dayIso === searchDate && searchStartHour != null && searchEndHour != null
       ? { start: searchStartHour, end: searchEndHour }
-      : undefined;
-    getSpotCondition(spot, dateIso, hourRange).then(setCondition);
-    getHourlyConditions(spot, dateIso).then((list) => {
-      const hour = (h: HourCondition) => Number(h.hourLabel.replace('h', ''));
-      const filtered = list.filter((h) => hour(h) >= DISPLAY_HOURS_START && hour(h) <= DISPLAY_HOURS_END);
-      setHourly(filtered);
-      // Curseur pré-positionné sur le début du créneau recherché ; sinon sur
-      // l'heure actuelle. L'utilisateur reste libre de le déplacer ensuite.
-      const target = searchStartHour ?? new Date().getHours();
-      const closest = filtered.findIndex((h) => hour(h) >= target);
-      setSelectedHourIndex(closest === -1 ? 0 : closest);
-    });
-  }, [spot.id, searchDate, searchStartHour, searchEndHour]);
-
-  const selected = hourly[selectedHourIndex] ?? null;
-
-  const windMin = spot.ventMinNoeuds ?? DEFAULT_WIND_MIN_KN;
-  const windMax = spot.ventMaxNoeuds ?? DEFAULT_WIND_MAX_KN;
-  // Échelle absolue (0 → au moins 35 nds, ou plus si le plafond du spot le
-  // dépasse) pour que le curseur puisse se placer visiblement en dehors de
-  // la zone idéale (trop peu / trop de vent), au lieu d'être collé à un bord.
-  const windScaleMax = Math.max(windMax + 8, 35);
-  const knToPct = (kn: number) => Math.max(0, Math.min(100, (kn / windScaleMax) * 100));
-  const windIdealZone = { left: knToPct(windMin), width: knToPct(windMax) - knToPct(windMin) };
-  const windPct = selected ? knToPct(selected.windSpeedKn) : 0;
-  const gustDelta = selected ? selected.windGustKn - selected.windSpeedKn : 0;
-  const isGusty = gustDelta >= GUST_THRESHOLD_KN;
-  const windDirPct = selected ? directionToBarPercent(selected.windDir) : 50;
-  const idealDirZone = (() => {
-    const favorables = spot.directionsFavorables;
-    if (!favorables || favorables.length === 0) return { left: 35, width: 40 };
-    const pcts = favorables.map(directionToBarPercent);
-    const min = Math.min(...pcts);
-    const max = Math.max(...pcts);
-    return { left: min, width: Math.max(max - min, 6) };
-  })();
-  const tideZone = tideIdealZone(spot.contrainteMaree);
-  const tidePct = selected?.tideHeightFraction != null ? selected.tideHeightFraction * 100 : 50;
+      : { start: 6, end: 22 };
+    getSpotCondition(spot, dayIso, hourRange).then(setCondition);
+  }, [spot.id, dayIso, searchDate, searchStartHour, searchEndHour]);
 
   const hero = (
     <View>
@@ -138,7 +75,7 @@ export default function SpotDetailScreen({ route }: Props) {
     </View>
   );
 
-  if (!condition || !selected) {
+  if (!condition) {
     return (
       <View style={styles.container}>
         {hero}
@@ -180,126 +117,13 @@ export default function SpotDetailScreen({ route }: Props) {
             <Text style={styles.cardEyebrow}>PRÉVISIONS</Text>
           </View>
 
-          <View style={styles.sliderCard}>
-            <View style={styles.sliderHourRow}>
-              <View style={[styles.sliderHourPill, { backgroundColor: LEVEL_COLORS[selected.level] }]}>
-                <Text style={styles.sliderHourPillText}>{selected.hourLabel}</Text>
-              </View>
-              <Text style={[styles.navigableText, { color: LEVEL_COLORS[selected.level] }]}>
-                {selected.level === 'mauvais' ? 'NON NAVIGABLE' : 'NAVIGABLE'}
-              </Text>
-            </View>
-
-            <View style={styles.sliderTrackWrap}>
-              <View style={styles.sliderHeatmap}>
-                {hourly.map((h, i) => (
-                  <View key={i} style={[styles.sliderHeatmapSegment, { backgroundColor: LEVEL_COLORS[h.level] }]} />
-                ))}
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={0}
-                maximumValue={Math.max(hourly.length - 1, 0)}
-                step={1}
-                value={selectedHourIndex}
-                onValueChange={setSelectedHourIndex}
-                minimumTrackTintColor="transparent"
-                maximumTrackTintColor="transparent"
-                thumbTintColor={colors.neutral.white}
-              />
-            </View>
-
-            <View style={styles.sliderEdgeRow}>
-              <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_START}h</Text>
-              <Text style={styles.sliderEdgeLabel}>{DISPLAY_HOURS_END}h</Text>
-            </View>
-          </View>
-
-          <View style={styles.barRow}>
-            <View style={styles.barLabelRow}>
-              <Text style={styles.barLabel}>Force du vent</Text>
-              <Text style={[styles.barValue, !selected.windOk && styles.barValueBlocking]}>
-                {selected.windSpeedKn} nds{' '}
-                <Text style={styles.barValueMuted}>/ idéal {windMin}–{windMax} nds</Text>
-              </Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barIdealZone,
-                  { left: `${windIdealZone.left}%`, width: `${windIdealZone.width}%` },
-                ]}
-              />
-              <View style={[styles.barMarker, { left: `${windPct}%` }]} />
-            </View>
-            <View style={styles.dirScaleRow}>
-              <Text style={styles.dirScaleLabel}>0</Text>
-              <Text style={styles.dirScaleLabel}>{windScaleMax} nds</Text>
-            </View>
-          </View>
-
-          <View style={styles.barRow}>
-            <View style={styles.barLabelRow}>
-              <Text style={styles.barLabel}>Direction</Text>
-              <Text style={[styles.barValue, !selected.dirOk && styles.barValueBlocking]}>
-                {selected.windDir}{' '}
-                <Text style={styles.barValueMuted}>
-                  / idéal {spot.directionsFavorables?.join('–') ?? '—'}
-                </Text>
-              </Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barIdealZone,
-                  { left: `${idealDirZone.left}%`, width: `${idealDirZone.width}%` },
-                ]}
-              />
-              <View style={[styles.barMarker, { left: `${windDirPct}%` }]} />
-            </View>
-            <View style={styles.dirScaleRow}>
-              <Text style={styles.dirScaleLabel}>O</Text>
-              <Text style={styles.dirScaleLabel}>N/S</Text>
-              <Text style={styles.dirScaleLabel}>E</Text>
-            </View>
-          </View>
-
-          <View style={styles.barRow}>
-            <View style={styles.barLabelRow}>
-              <Text style={styles.barLabel}>Marée</Text>
-              <Text style={[styles.barValue, !selected.tideOk && styles.barValueBlocking]}>
-                {selected.tideLabel}
-                {tideZone && (
-                  <Text style={styles.barValueMuted}> / idéal {TIDE_LABELS[spot.contrainteMaree]}</Text>
-                )}
-              </Text>
-            </View>
-            <View style={styles.barTrack}>
-              {tideZone && (
-                <View
-                  style={[
-                    styles.barIdealZone,
-                    styles.barIdealZoneTide,
-                    { left: `${tideZone.left}%`, width: `${tideZone.width}%` },
-                  ]}
-                />
-              )}
-              <View style={[styles.barMarker, styles.barMarkerTide, { left: `${tidePct}%` }]} />
-            </View>
-            <View style={styles.dirScaleRow}>
-              <Text style={styles.dirScaleLabel}>BASSE MER</Text>
-              <Text style={styles.dirScaleLabel}>PLEINE MER</Text>
-            </View>
-          </View>
-
-          <View style={[styles.barRow, { marginBottom: 0 }]}>
-            <View style={styles.barLabelRow}>
-              <Text style={styles.barLabel}>Rafales</Text>
-              <Text style={[styles.barValue, isGusty && styles.barValueWarning]}>
-                {selected.windGustKn} nds · {isGusty ? 'Vent rafaleux' : 'Vent stable'}
-              </Text>
-            </View>
-          </View>
+          <ForecastTable
+            spot={spot}
+            initialDate={searchDate}
+            highlightStart={searchStartHour}
+            highlightEnd={searchEndHour}
+            onDayChange={setDayIso}
+          />
 
           <Text style={styles.cardFootnote}>
             {TIDE_LABELS[spot.contrainteMaree]}
@@ -412,37 +236,6 @@ const styles = StyleSheet.create({
   },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 },
   cardEyebrow: { ...typography.caption, color: colors.navy(0.55), letterSpacing: 1 },
-  sliderCard: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sliderHourRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  navigableText: { fontFamily: typography.h3.fontFamily, fontSize: 12, letterSpacing: 0.6 },
-  sliderHourPill: {
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  sliderHourPillText: {
-    fontFamily: typography.h1.fontFamily,
-    fontSize: 20,
-    color: colors.neutral.white,
-    letterSpacing: 0.3,
-  },
-  sliderTrackWrap: { width: '100%', height: 32, justifyContent: 'center' },
-  sliderHeatmap: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    flexDirection: 'row',
-  },
-  sliderHeatmapSegment: { flex: 1 },
-  slider: { width: '100%', height: 32 },
-  sliderEdgeRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 4 },
-  sliderEdgeLabel: { ...typography.caption, color: colors.navy(0.4) },
   windguruButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -455,20 +248,6 @@ const styles = StyleSheet.create({
     borderColor: colors.neutral.border,
   },
   windguruButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.blue, letterSpacing: 0.4 },
-  barRow: { marginBottom: 12 },
-  barValueWarning: { color: '#D9530A' },
-  barValueBlocking: { color: LEVEL_COLORS.mauvais },
-  barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  barLabel: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
-  barValue: { fontFamily: typography.h3.fontFamily, fontSize: 12.5, color: colors.navyBase },
-  barValueMuted: { color: colors.navy(0.4), fontFamily: typography.body.fontFamily },
-  barTrack: { height: 8, borderRadius: 4, backgroundColor: '#EDF1F4', marginTop: 7, position: 'relative' },
-  barIdealZone: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#CDEBDD', borderRadius: 4 },
-  barIdealZoneTide: { backgroundColor: '#FBE7C4' },
-  barMarker: { position: 'absolute', top: -3, width: 5, height: 14, borderRadius: 3, backgroundColor: '#17A673' },
-  barMarkerTide: { backgroundColor: '#F0A020' },
-  dirScaleRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  dirScaleLabel: { ...typography.caption, fontSize: 9.5, color: colors.navy(0.35) },
   cardFootnote: { ...typography.body, color: colors.navy(0.65), marginTop: 4, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.navy(0.07) },
   description: { ...typography.body, color: colors.navy(0.8), marginTop: 8, lineHeight: 19 },
   warningBox: { backgroundColor: colors.accent[100], borderRadius: 12, padding: 14, marginTop: 13 },

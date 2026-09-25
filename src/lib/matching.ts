@@ -54,20 +54,34 @@ export function localDateIso(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function tideMatches(contrainte: TideConstraint, heightFraction: number): boolean {
+// Seuils de hauteur (0 = basse mer, 1 = pleine mer) de la fenêtre
+// favorable ; null = contrainte non automatisable ('toutes', 'variable',
+// 'inconnue'), la marée ne pénalise alors jamais.
+function tideWindow(contrainte: TideConstraint): { min: number; max: number } | null {
   switch (contrainte) {
     case 'maree_haute':
-      return heightFraction >= 0.75;
+      return { min: 0.75, max: 1 };
     case 'maree_basse':
-      return heightFraction <= 0.25;
+      return { min: 0, max: 0.25 };
     case 'mi_maree_haute':
-      return heightFraction >= 0.5;
+      return { min: 0.5, max: 1 };
     case 'mi_maree_basse':
-      return heightFraction <= 0.5;
+      return { min: 0, max: 0.5 };
     default:
-      // 'toutes', 'variable', 'inconnue' : pas de filtre automatisable
-      return true;
+      return null;
   }
+}
+
+// Marge (en fraction de marnage) autour de la fenêtre où la marée est
+// jugée « limite » plutôt que franchement hors conditions.
+const TIDE_MARGIN = 0.12;
+
+function tideLevel(contrainte: TideConstraint, heightFraction: number): Level {
+  const w = tideWindow(contrainte);
+  if (!w) return 'bon';
+  if (heightFraction >= w.min && heightFraction <= w.max) return 'bon';
+  const distance = heightFraction < w.min ? w.min - heightFraction : heightFraction - w.max;
+  return distance <= TIDE_MARGIN ? 'moyen' : 'mauvais';
 }
 
 // Fenêtre favorable sur l'axe basse mer (0) → pleine mer (100), alignée sur
@@ -89,14 +103,18 @@ export function tideIdealZone(contrainte: TideConstraint): { left: number; width
   }
 }
 
-function directionMatches(favorables: CompassDirection[] | null, dir: CompassDirection): boolean {
-  if (!favorables || favorables.length === 0) return true;
-  if (favorables.includes(dir)) return true;
+// Direction favorable = vert ; secteur voisin (45°) = limite ; au-delà =
+// non navigable (souvent offshore ou side-off dangereux). Spot sans
+// directions documentées : on ne pénalise pas.
+function directionLevel(favorables: CompassDirection[] | null, dir: CompassDirection): Level {
+  if (!favorables || favorables.length === 0) return 'bon';
+  if (favorables.includes(dir)) return 'bon';
   const idx = COMPASS_ORDER.indexOf(dir);
-  return favorables.some((f) => {
+  const isNeighbor = favorables.some((f) => {
     const diff = Math.abs(COMPASS_ORDER.indexOf(f) - idx);
-    return Math.min(diff, 8 - diff) === 1; // secteur voisin (45°) toléré
+    return Math.min(diff, 8 - diff) === 1;
   });
+  return isNeighbor ? 'moyen' : 'mauvais';
 }
 
 const COMPASS_DEGREES: Record<CompassDirection, number> = {
@@ -130,27 +148,45 @@ function tideLabelFor(heightFraction: number, rising: boolean): string {
 export const DEFAULT_WIND_MIN_KN = 12;
 export const DEFAULT_WIND_MAX_KN = 30;
 
-interface HourEvaluation {
-  level: 'bon' | 'moyen' | 'mauvais';
-  windOk: boolean;
-  dirOk: boolean;
-  tideOk: boolean;
+export type Level = 'bon' | 'moyen' | 'mauvais';
+
+const LEVEL_ORDER: Record<Level, number> = { bon: 0, moyen: 1, mauvais: 2 };
+
+function worst(...levels: Level[]): Level {
+  return levels.reduce((a, b) => (LEVEL_ORDER[b] > LEVEL_ORDER[a] ? b : a), 'bon');
 }
 
-function evaluateHour(hour: HourlyWind, spot: Spot): HourEvaluation {
+// Vent un peu faible (jusqu'à 3 nds sous le mini) ou un peu fort (jusqu'à
+// 5 nds au-dessus du maxi) = limite : naviguable avec la bonne aile.
+const WIND_MARGIN_LOW_KN = 3;
+const WIND_MARGIN_HIGH_KN = 5;
+
+function windLevel(speedKn: number, spot: Spot): Level {
   const min = spot.ventMinNoeuds ?? DEFAULT_WIND_MIN_KN;
   const max = spot.ventMaxNoeuds ?? DEFAULT_WIND_MAX_KN;
-  const windOk = hour.windSpeedKn >= min && hour.windSpeedKn <= max;
-  const dirOk = directionMatches(spot.directionsFavorables, hour.windDir);
-  const tideOk = spot.mareeRef
-    ? tideMatches(spot.contrainteMaree, getTideState(spot.mareeRef, parseParisLocal(hour.time)).heightFraction)
-    : true;
-
-  const level: 'bon' | 'moyen' | 'mauvais' = !windOk ? 'mauvais' : dirOk && tideOk ? 'bon' : 'moyen';
-  return { level, windOk, dirOk, tideOk };
+  if (speedKn >= min && speedKn <= max) return 'bon';
+  if (speedKn >= min - WIND_MARGIN_LOW_KN && speedKn <= max + WIND_MARGIN_HIGH_KN) return 'moyen';
+  return 'mauvais';
 }
 
-function hourLevel(hour: HourlyWind, spot: Spot): 'bon' | 'moyen' | 'mauvais' {
+interface HourEvaluation {
+  level: Level;
+  windLevel: Level;
+  dirLevel: Level;
+  tideLevel: Level;
+}
+
+// Verdict d'une heure = le pire des trois critères.
+function evaluateHour(hour: HourlyWind, spot: Spot): HourEvaluation {
+  const wind = windLevel(hour.windSpeedKn, spot);
+  const dir = directionLevel(spot.directionsFavorables, hour.windDir);
+  const tide = spot.mareeRef
+    ? tideLevel(spot.contrainteMaree, getTideState(spot.mareeRef, parseParisLocal(hour.time)).heightFraction)
+    : 'bon';
+  return { level: worst(wind, dir, tide), windLevel: wind, dirLevel: dir, tideLevel: tide };
+}
+
+function hourLevel(hour: HourlyWind, spot: Spot): Level {
   return evaluateHour(hour, spot).level;
 }
 
@@ -159,19 +195,21 @@ function formatHour(naiveIso: string): string {
 }
 
 export interface HourCondition {
+  hour: number; // 0-23
   hourLabel: string;
   windSpeedKn: number;
   windGustKn: number;
   windDir: CompassDirection;
+  windDirDeg: number;
   tideLabel: string;
   // 0 = basse mer, 1 = pleine mer ; null si le spot n'a pas de mareeRef.
   tideHeightFraction: number | null;
-  level: 'bon' | 'moyen' | 'mauvais';
-  // Détail par critère — pour signaler ce qui bloque la navigabilité dans
-  // l'UI (ex. vent OK mais marée hors fenêtre => marée en rouge).
-  windOk: boolean;
-  dirOk: boolean;
-  tideOk: boolean;
+  tideRising: boolean | null;
+  level: Level;
+  // Niveau par critère — pour colorer chaque ligne du tableau de prévisions.
+  windLevel: Level;
+  dirLevel: Level;
+  tideLevel: Level;
 }
 
 export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<HourCondition[]> {
@@ -182,16 +220,16 @@ export async function getHourlyConditions(spot: Spot, dateIso: string): Promise<
       const tide = spot.mareeRef ? getTideState(spot.mareeRef, parseParisLocal(hour.time)) : null;
       const evaluation = evaluateHour(hour, spot);
       return {
+        hour: Number(hour.time.slice(11, 13)),
         hourLabel: formatHour(hour.time),
         windSpeedKn: hour.windSpeedKn,
         windGustKn: hour.windGustKn,
         windDir: hour.windDir,
+        windDirDeg: hour.windDirDeg,
         tideLabel: tide ? tideLabelFor(tide.heightFraction, tide.rising) : 'Marée inconnue',
         tideHeightFraction: tide ? tide.heightFraction : null,
-        level: evaluation.level,
-        windOk: evaluation.windOk,
-        dirOk: evaluation.dirOk,
-        tideOk: evaluation.tideOk,
+        tideRising: tide ? tide.rising : null,
+        ...evaluation,
       };
     });
 }
@@ -234,10 +272,9 @@ export async function getSpotCondition(
   const tide = spot.mareeRef ? getTideState(spot.mareeRef, parseParisLocal(rep.time)) : null;
 
   const withLevel = dayHours.map((hour) => ({ hour, level: hourLevel(hour, spot) }));
-  const order: Record<'bon' | 'moyen' | 'mauvais', number> = { bon: 0, moyen: 1, mauvais: 2 };
-  let bestLevel: 'bon' | 'moyen' | 'mauvais' = 'mauvais';
+  let bestLevel: Level = 'mauvais';
   for (const x of withLevel) {
-    if (order[x.level] < order[bestLevel]) bestLevel = x.level;
+    if (LEVEL_ORDER[x.level] < LEVEL_ORDER[bestLevel]) bestLevel = x.level;
   }
 
   const window = withLevel.filter((x) => x.level === bestLevel);
@@ -247,7 +284,7 @@ export async function getSpotCondition(
   const color = bestLevel === 'bon' ? COLOR_BON : bestLevel === 'moyen' ? COLOR_MOYEN : COLOR_MAUVAIS;
   const windowLabel =
     bestLevel === 'mauvais'
-      ? 'Vent hors plage'
+      ? 'Hors conditions'
       : `${formatHour(window[0].hour.time)} → ${formatHour(window[window.length - 1].hour.time)}`;
 
   return {
