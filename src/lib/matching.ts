@@ -5,7 +5,7 @@ import { getTideState } from './tide';
 // Vrai moteur de matching : combine vent réel (weather.ts) et marée
 // approximée (tide.ts) pour produire le verdict affiché dans l'app.
 export interface SpotCondition {
-  verdict: 'MEILLEURES CONDITIONS ENTRE' | 'CONDITIONS MOYENNES' | 'NON NAVIGABLE';
+  verdict: 'MEILLEURES CONDITIONS ENTRE' | 'CONDITIONS MOYENNES' | 'PEU NAVIGABLE';
   color: string;
   windSpeed: number;
   windDir: CompassDirection;
@@ -104,7 +104,7 @@ export function tideIdealZone(contrainte: TideConstraint): { left: number; width
 }
 
 // Direction favorable = vert ; secteur voisin (45°) = limite ; au-delà =
-// non navigable (souvent offshore ou side-off dangereux). Spot sans
+// peu navigable (souvent offshore ou side-off dangereux). Spot sans
 // directions documentées : on ne pénalise pas.
 function directionLevel(favorables: CompassDirection[] | null, dir: CompassDirection): Level {
   if (!favorables || favorables.length === 0) return 'bon';
@@ -255,7 +255,7 @@ export async function getSpotCondition(
 
   if (dayHours.length === 0) {
     return {
-      verdict: 'NON NAVIGABLE',
+      verdict: 'PEU NAVIGABLE',
       color: COLOR_MAUVAIS,
       windSpeed: 0,
       windDir: 'N',
@@ -280,7 +280,7 @@ export async function getSpotCondition(
   const window = withLevel.filter((x) => x.level === bestLevel);
 
   const verdict =
-    bestLevel === 'bon' ? 'MEILLEURES CONDITIONS ENTRE' : bestLevel === 'moyen' ? 'CONDITIONS MOYENNES' : 'NON NAVIGABLE';
+    bestLevel === 'bon' ? 'MEILLEURES CONDITIONS ENTRE' : bestLevel === 'moyen' ? 'CONDITIONS MOYENNES' : 'PEU NAVIGABLE';
   const color = bestLevel === 'bon' ? COLOR_BON : bestLevel === 'moyen' ? COLOR_MOYEN : COLOR_MAUVAIS;
   const windowLabel =
     bestLevel === 'mauvais'

@@ -16,6 +16,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { spotsMapHtml, type MapMarker } from '../lib/mapHtml';
+import SpotsMapModal from '../components/SpotsMapModal';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
@@ -82,50 +84,13 @@ function dayShortLabel(date: Date) {
 const VERDICT_ORDER: Record<string, number> = {
   'MEILLEURES CONDITIONS ENTRE': 0,
   'CONDITIONS MOYENNES': 1,
-  'NON NAVIGABLE': 2,
+  'PEU NAVIGABLE': 2,
 };
 
 const RESULT_SPOT_ZOOM = 12;
 
-function resultsMapHtml(markers: { id: string; nom: string; lat: number; lon: number }[]) {
-  const initialView =
-    markers.length > 0
-      ? `map.setView([${markers[0].lat}, ${markers[0].lon}], ${RESULT_SPOT_ZOOM});`
-      : `map.setView([46.6, -1.5], 5);`;
-  const markerCalls = markers
-    .map(
-      (m) =>
-        `L.marker([${m.lat}, ${m.lon}], { icon: L.divIcon({ className: 'zonekite-marker', iconSize: [16, 16] }) })
-          .addTo(map)
-          .on('click', () => window.ReactNativeWebView.postMessage(${JSON.stringify(m.id)}));`
-    )
-    .join('\n');
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .zonekite-marker { width: 16px; height: 16px; border-radius: 50%; background: #17A673; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map', { zoomControl: false, attributionControl: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    ${markerCalls}
-    ${initialView}
-    window.zonekiteFlyTo = function (lat, lon) {
-      map.flyTo([lat, lon], ${RESULT_SPOT_ZOOM}, { duration: 0.6 });
-    };
-  </script>
-</body>
-</html>`;
+function spotPoint(spot: Spot) {
+  return { id: spot.id, nom: spot.nom, lat: spot.lat, lon: spot.lon };
 }
 
 // Écran central : recherche de spot selon jour, créneau, point de départ, distance max
@@ -240,7 +205,50 @@ export default function SearchScreen() {
   ).current;
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
 
-  const mapHtml = useMemo(() => resultsMapHtml(results.map((r) => r.spot)), [results]);
+  const mapHtml = useMemo(
+    () =>
+      spotsMapHtml(
+        results.map(({ spot, condition }) => ({ ...spotPoint(spot), color: condition.color })),
+        { zoom: RESULT_SPOT_ZOOM }
+      ),
+    [results]
+  );
+
+  // Carte plein écran : tous les spots (pas seulement ceux dans le rayon de
+  // recherche), colorés selon les conditions du même jour / créneau.
+  const [showFullMap, setShowFullMap] = useState(false);
+  const [fullMapMarkers, setFullMapMarkers] = useState<MapMarker[] | null>(null);
+
+  useEffect(() => {
+    setFullMapMarkers(null);
+  }, [dateIso, startHour, endHour]);
+
+  function openFullMap() {
+    setShowFullMap(true);
+    if (fullMapMarkers) return;
+    Promise.all(
+      spots.map((spot) => {
+        const known = results.find((r) => r.spot.id === spot.id)?.condition;
+        return (known ? Promise.resolve(known) : getSpotCondition(spot, dateIso, { start: startHour, end: endHour }))
+          .then((condition): MapMarker => ({
+            ...spotPoint(spot),
+            color: condition.color,
+            verdict: condition.verdict,
+            window: condition.window,
+          }))
+          .catch((): MapMarker | null => null);
+      })
+    ).then((list) => setFullMapMarkers(list.filter((m): m is MapMarker => m != null)));
+  }
+
+  function openSpot(spot: Spot) {
+    navigation.navigate('SpotDetail', {
+      spot,
+      searchDate: dateIso,
+      searchStartHour: startHour,
+      searchEndHour: endHour,
+    });
+  }
 
   useEffect(() => {
     if (!searched) return;
@@ -424,18 +432,32 @@ export default function SearchScreen() {
               style={styles.map}
               source={{ html: mapHtml }}
               onMessage={(e: WebViewMessageEvent) => {
-                const spot = results.find((r) => r.spot.id === e.nativeEvent.data)?.spot;
-                if (spot) {
-                  navigation.navigate('SpotDetail', {
-                    spot,
-                    searchDate: dateIso,
-                    searchStartHour: startHour,
-                    searchEndHour: endHour,
-                  });
+                const data = e.nativeEvent.data;
+                if (data === 'expand') {
+                  openFullMap();
+                  return;
                 }
+                const spot = results.find((r) => `spot:${r.spot.id}` === data)?.spot;
+                if (spot) openSpot(spot);
               }}
             />
+            <Pressable style={styles.mapExpandButton} onPress={openFullMap} hitSlop={8}>
+              <Ionicons name="expand" size={16} color={colors.navyBase} />
+            </Pressable>
           </View>
+
+          <SpotsMapModal
+            visible={showFullMap}
+            markers={fullMapMarkers}
+            fitIds={results.map((r) => r.spot.id)}
+            subtitle={`${dayShortLabel(selectedDate)} · ${formatHour(startHour)}–${formatHour(endHour)}`}
+            onClose={() => setShowFullMap(false)}
+            onSelectSpot={(id) => {
+              const spot = spots.find((sp) => sp.id === id);
+              setShowFullMap(false);
+              if (spot) openSpot(spot);
+            }}
+          />
 
           <FlatList
             style={styles.resultsFlatList}
@@ -759,6 +781,22 @@ const styles = StyleSheet.create({
   resultsContainer: { flex: 1 },
   mapContainer: { height: 150, backgroundColor: '#D4E1E9' },
   map: { flex: 1 },
+  mapExpandButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.neutral.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
   resultsFlatList: { flex: 1 },
   resultsList: { padding: 14 },
   resultsHeaderRow: { marginBottom: 10 },

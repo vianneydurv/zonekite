@@ -14,7 +14,7 @@ import type { Spot } from '../types/spot';
 
 // Tableau de prévisions heure par heure, inspiré de Windguru : une colonne
 // par heure, une ligne par critère, chaque case colorée selon qu'elle est
-// idéale (vert), limite (orange) ou non navigable (rouge) pour CE spot.
+// idéale (vert), limite (orange) ou peu navigable (rouge) pour CE spot.
 
 const HOURS_START = 6;
 const HOURS_END = 22;
@@ -249,7 +249,7 @@ export default function ForecastTable({ spot, initialDate, highlightStart, highl
       <View style={styles.legend}>
         <LegendItem color={LEVEL_COLORS.bon} label="Idéal" />
         <LegendItem color={LEVEL_COLORS.moyen} label="Limite" />
-        <LegendItem color={LEVEL_COLORS.mauvais} label="Non navigable" />
+        <LegendItem color={LEVEL_COLORS.mauvais} label="Peu navigable" />
       </View>
     </View>
   );

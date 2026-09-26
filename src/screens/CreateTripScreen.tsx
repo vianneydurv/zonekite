@@ -26,6 +26,12 @@ const HOURS = Array.from({ length: 17 }, (_, i) => i + 6).flatMap((h) =>
   [0, 15, 30, 45].map((m) => `${h}h${String(m).padStart(2, '0')}`)
 );
 
+// "10h30" -> 630 (minutes depuis minuit), pour comparer départ et retour.
+function hourToMinutes(label: string): number {
+  const [h, m] = label.split('h').map(Number);
+  return h * 60 + (m || 0);
+}
+
 // Un covoit kite reste une voiture avec du matériel à bord (ailes, boards) :
 // au-delà de 5 passagers ce n'est de toute façon plus réaliste.
 const MAX_PLACES = 5;
@@ -93,7 +99,12 @@ export default function CreateTripScreen({ navigation, route }: Props) {
     s.nom.toLowerCase().includes(spotFilter.toLowerCase())
   );
 
-  const canSubmit = spotId != null && heureDepart != null && adresseDepart.trim().length > 0;
+  // Retour estimé à la même heure ou avant le départ : trajet impossible
+  // (tout se passe dans la même journée), on bloque la publication.
+  const horairesIncoherents =
+    heureDepart != null && heureRetour != null && hourToMinutes(heureRetour) <= hourToMinutes(heureDepart);
+  const canSubmit =
+    spotId != null && heureDepart != null && adresseDepart.trim().length > 0 && !horairesIncoherents;
 
   if (editingTripId && !loaded) return null;
 
@@ -182,13 +193,24 @@ export default function CreateTripScreen({ navigation, route }: Props) {
             {heureDepart ?? 'Choisir'}
           </Text>
         </Pressable>
-        <Pressable style={styles.hourField} onPress={() => setPickerMode('retour')}>
+        <Pressable
+          style={[styles.hourField, horairesIncoherents && styles.hourFieldError]}
+          onPress={() => setPickerMode('retour')}
+        >
           <Text style={styles.hourFieldLabel}>RETOUR ESTIMÉ</Text>
           <Text style={heureRetour ? styles.selectValue : styles.selectPlaceholder}>
             {heureRetour ?? 'Optionnel'}
           </Text>
         </Pressable>
       </View>
+      {horairesIncoherents && (
+        <View style={styles.errorRow}>
+          <Ionicons name="alert-circle" size={15} color={colors.status.bad} />
+          <Text style={styles.errorText}>
+            L'heure de retour doit être après l'heure de départ ({heureDepart}).
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.fieldLabel}>POINT DE DÉPART</Text>
       <TextInput
@@ -296,6 +318,9 @@ export default function CreateTripScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  hourFieldError: { borderWidth: 1.5, borderColor: colors.status.bad },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  errorText: { ...typography.caption, fontSize: 12, color: colors.status.bad, flex: 1 },
   container: { flex: 1, backgroundColor: colors.neutral.background },
   content: { padding: 20, paddingBottom: 60 },
   fieldLabel: {
