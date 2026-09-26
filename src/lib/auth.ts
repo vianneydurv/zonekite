@@ -10,6 +10,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { unregisterPushToken } from './notifications';
 
 export function subscribeToAuth(callback: (user: User | null) => void): () => void {
   return onAuthStateChanged(auth, callback);
@@ -41,6 +42,10 @@ export async function signIn(email: string, password: string): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
+  // Avant la déconnexion (il faut encore être authentifié pour écrire) :
+  // sinon ce téléphone continuerait de recevoir les notifications du compte.
+  const uid = auth.currentUser?.uid;
+  if (uid) await unregisterPushToken(uid).catch(() => {});
   await firebaseSignOut(auth);
 }
 

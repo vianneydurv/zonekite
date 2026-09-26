@@ -46,7 +46,7 @@ export default function TripDetailScreen({ route, navigation }: Props) {
 
   async function handleRequest() {
     if (myRequest) return;
-    await requestSeat(trip!.id, profile);
+    await requestSeat(trip!, profile);
     setMyRequest({
       id: `${trip!.id}_pending`,
       tripId: trip!.id,
@@ -59,13 +59,13 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   }
 
   async function handleAccept(request: RideRequest) {
-    await acceptRequest(request);
+    await acceptRequest(request, trip!);
     setRequests((rs) => rs.map((r) => (r.id === request.id ? { ...r, status: 'accepted' } : r)));
     setTrip((t) => (t ? { ...t, placesDispo: t.placesDispo - 1 } : t));
   }
 
   async function handleRefuse(request: RideRequest) {
-    await refuseRequest(request.id);
+    await refuseRequest(request, trip!);
     setRequests((rs) => rs.map((r) => (r.id === request.id ? { ...r, status: 'refused' } : r)));
   }
 

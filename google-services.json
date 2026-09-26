@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "502435639254",
+    "project_id": "zonekite",
+    "storage_bucket": "zonekite.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502435639254:android:d7628fa291e4039bf0be77",
+        "android_client_info": {
+          "package_name": "com.zonekite.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClqT1fX1kYW0urqLmsv1BOoovRMVRD7Xo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

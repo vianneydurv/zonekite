@@ -20,6 +20,7 @@ import { subscribeToAuth } from './src/lib/auth';
 import { getProfile } from './src/lib/profileStorage';
 import { isRemotePhoto } from './src/lib/cloudinary';
 import { syncDriverInfoOnMyTrips } from './src/lib/tripsStorage';
+import { registerForPushNotifications } from './src/lib/notifications';
 import type { Profile } from './src/types/profile';
 
 export default function App() {
@@ -44,6 +45,14 @@ export default function App() {
   useEffect(() => {
     if (user) getProfile().then(setProfile);
   }, [user]);
+
+  // Enregistre ce téléphone pour les notifications (demande l'autorisation
+  // au premier lancement), une fois le profil complet.
+  useEffect(() => {
+    if (user && profile && isRemotePhoto(profile.photoUri) && profile.genre) {
+      registerForPushNotifications(user.uid).catch(() => {});
+    }
+  }, [user, profile]);
 
   // Rattrapage : un conducteur dont la photo est déjà hébergée peut avoir
   // des trajets publiés avant (photo locale illisible par les autres).

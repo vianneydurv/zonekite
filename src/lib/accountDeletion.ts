@@ -23,5 +23,6 @@ export async function deleteMyData(): Promise<void> {
     ...requests.docs.map((d) => deleteDoc(d.ref)),
     ...posts.docs.map((d) => deleteDoc(d.ref)),
     deleteDoc(doc(db, 'profiles', uid)),
+    deleteDoc(doc(db, 'pushTokens', uid)),
   ]);
 }

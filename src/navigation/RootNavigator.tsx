@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { NavigationContainer } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import SearchStackNavigator from './SearchStackNavigator';
@@ -26,9 +28,25 @@ const ICONS: Record<keyof RootTabParamList, keyof typeof Ionicons.glyphMap> = {
   Profile: 'person-circle',
 };
 
+const navigationRef = createNavigationContainerRef<RootTabParamList>();
+
 export default function RootNavigator() {
+  const [ready, setReady] = useState(false);
+  // Dernière notification touchée, y compris celle qui a lancé l'app.
+  const lastResponse = Notifications.useLastNotificationResponse();
+
+  useEffect(() => {
+    const tripId = lastResponse?.notification.request.content.data?.tripId;
+    if (!ready || typeof tripId !== 'string') return;
+    // Ouvre le trajet concerné dans l'onglet Covoit.
+    (navigationRef.navigate as (...args: unknown[]) => void)('Carpool', {
+      screen: 'TripDetail',
+      params: { tripId },
+    });
+  }, [ready, lastResponse]);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={() => setReady(true)}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
