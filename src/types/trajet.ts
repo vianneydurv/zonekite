@@ -1,3 +1,5 @@
+import type { Genre } from './profile';
+
 export interface Trajet {
   id: string;
   spotId: string;
@@ -8,6 +10,9 @@ export interface Trajet {
   conducteurUid?: string;
   conducteurPrenom: string;
   conducteurPhotoUri?: string;
+  // Pour accorder « Conducteur » / « Conductrice » chez les autres membres
+  // (les profils ne sont lisibles que par leur propriétaire).
+  conducteurGenre?: Genre;
   date: string; // ISO yyyy-mm-dd
   heureDepart: string; // ex "10h"
   heureRetourEstimee?: string;

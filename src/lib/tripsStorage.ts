@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, getDocs, orderBy, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Trajet } from '../types/trajet';
+import type { Profile } from '../types/profile';
 import { localDateIso } from './matching';
 
 const tripsCollection = collection(db, 'trips');
@@ -37,15 +38,29 @@ export async function deleteTrip(tripId: string): Promise<void> {
 // création (les profils ne sont lisibles que par leur propriétaire) : on
 // les resynchronise quand le conducteur modifie son profil, sinon ses
 // trajets déjà publiés garderaient l'ancienne photo.
-export async function syncDriverInfoOnMyTrips(uid: string, prenom: string, photoUri: string): Promise<void> {
+export async function syncDriverInfoOnMyTrips(
+  uid: string,
+  { prenom, photoUri, genre }: Pick<Profile, 'prenom' | 'photoUri' | 'genre'>
+): Promise<void> {
   const snap = await getDocs(query(tripsCollection, where('conducteurUid', '==', uid)));
   // Seuls les trajets réellement désynchronisés sont réécrits : appelé à
   // chaque lancement de l'app, ça évite des écritures inutiles.
   const stale = snap.docs.filter((d) => {
     const trip = d.data() as Trajet;
-    return trip.conducteurPrenom !== prenom || trip.conducteurPhotoUri !== photoUri;
+    return (
+      trip.conducteurPrenom !== prenom ||
+      trip.conducteurPhotoUri !== photoUri ||
+      (genre != null && trip.conducteurGenre !== genre)
+    );
   });
   await Promise.all(
-    stale.map((d) => updateDoc(d.ref, { conducteurPrenom: prenom, conducteurPhotoUri: photoUri }))
+    stale.map((d) =>
+      updateDoc(d.ref, {
+        conducteurPrenom: prenom,
+        conducteurPhotoUri: photoUri,
+        // Firestore refuse `undefined` : genre absent = champ non touché.
+        ...(genre != null ? { conducteurGenre: genre } : {}),
+      })
+    )
   );
 }

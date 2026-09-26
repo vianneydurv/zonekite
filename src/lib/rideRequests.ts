@@ -13,7 +13,7 @@ export async function requestSeat(tripId: string, profile: Profile | null): Prom
     id: `${tripId}_${uid}`,
     tripId,
     passagerUid: uid,
-    passagerPrenom: profile?.prenom ?? 'Un·e kiteur·se',
+    passagerPrenom: profile?.prenom ?? (profile?.genre === 'femme' ? 'Une kiteuse' : 'Un kiteur'),
     passagerPhotoUri: profile?.photoUri,
     status: 'pending',
     date: new Date().toISOString(),

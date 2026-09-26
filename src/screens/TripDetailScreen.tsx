@@ -11,7 +11,7 @@ import { acceptRequest, getMyRequests, getRequestsForTrips, refuseRequest, reque
 import { getProfile } from '../lib/profileStorage';
 import type { Trajet } from '../types/trajet';
 import { isRemotePhoto } from '../lib/cloudinary';
-import type { Profile } from '../types/profile';
+import { conducteurLabel, type Profile } from '../types/profile';
 import type { RideRequest } from '../types/rideRequest';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'TripDetail'>;
@@ -103,7 +103,7 @@ export default function TripDetailScreen({ route, navigation }: Props) {
             )}
             <View style={{ flex: 1 }}>
               <Text style={styles.driverName}>{trip.conducteurPrenom}</Text>
-              <Text style={styles.driverSub}>Conducteur·rice</Text>
+              <Text style={styles.driverSub}>{conducteurLabel(trip.conducteurGenre)}</Text>
             </View>
           </View>
         </View>

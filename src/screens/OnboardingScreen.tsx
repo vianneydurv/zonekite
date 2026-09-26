@@ -30,7 +30,9 @@ import {
   BOARD_MODELS_BY_BRAND,
 } from '../data/equipmentBrands';
 import {
-  NIVEAU_LABELS,
+  GENRE_LABELS,
+  niveauLabel,
+  type Genre,
   type Aile,
   type AutreMateriel,
   type Board,
@@ -54,6 +56,7 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
     isRemotePhoto(initialProfile?.photoUri) ? initialProfile.photoUri : null
   );
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [genre, setGenre] = useState<Genre | null>(initialProfile?.genre ?? null);
   const [niveau, setNiveau] = useState<NiveauKite | null>(initialProfile?.niveau ?? null);
   const [ville, setVille] = useState(initialProfile?.ville ?? '');
   // Ville déjà validée par le profil existant (édition) ou tout juste
@@ -67,7 +70,12 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
   const isEditing = initialProfile != null;
 
   const canSubmit =
-    prenom.trim().length > 0 && photoUri != null && niveau != null && villeConfirmed && !uploadingPhoto;
+    prenom.trim().length > 0 &&
+    photoUri != null &&
+    genre != null &&
+    niveau != null &&
+    villeConfirmed &&
+    !uploadingPhoto;
 
   useEffect(() => {
     if (villeConfirmed || ville.trim().length < 2) {
@@ -129,10 +137,11 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
   }
 
   async function handleSubmit() {
-    if (!canSubmit || !photoUri || !niveau) return;
+    if (!canSubmit || !photoUri || !niveau || !genre) return;
     const profile: Profile = {
       prenom: prenom.trim(),
       photoUri,
+      genre,
       niveau,
       ville: ville.trim(),
       materiel: {
@@ -145,7 +154,7 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
     const uid = auth.currentUser?.uid;
     if (uid) {
       // Non bloquant : un échec ici ne doit pas empêcher d'enregistrer le profil.
-      await syncDriverInfoOnMyTrips(uid, profile.prenom, profile.photoUri).catch(() => {});
+      await syncDriverInfoOnMyTrips(uid, profile).catch(() => {});
     }
     onComplete(profile);
   }
@@ -201,6 +210,21 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
             placeholderTextColor={colors.neutral.textSecondary}
           />
 
+          <Text style={styles.fieldLabel}>TU ES *</Text>
+          <View style={styles.niveauRow}>
+            {(['homme', 'femme'] as Genre[]).map((g) => (
+              <Pressable
+                key={g}
+                style={[styles.niveauChip, genre === g && styles.niveauChipSelected]}
+                onPress={() => setGenre(g)}
+              >
+                <Text style={[styles.niveauChipText, genre === g && styles.niveauChipTextSelected]}>
+                  {GENRE_LABELS[g]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <Text style={styles.fieldLabel}>NIVEAU DE PRATIQUE *</Text>
           <View style={styles.niveauRow}>
             {NIVEAUX.map((n) => (
@@ -210,7 +234,7 @@ export default function OnboardingScreen({ onComplete, initialProfile, onCancel 
                 onPress={() => setNiveau(n)}
               >
                 <Text style={[styles.niveauChipText, niveau === n && styles.niveauChipTextSelected]}>
-                  {NIVEAU_LABELS[n]}
+                  {niveauLabel(n, genre)}
                 </Text>
               </Pressable>
             ))}

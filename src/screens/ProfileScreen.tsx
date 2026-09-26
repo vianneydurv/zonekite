@@ -23,7 +23,7 @@ import { getMyRequests } from '../lib/rideRequests';
 import { localDateIso } from '../lib/matching';
 import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
-import { NIVEAU_LABELS, type Profile } from '../types/profile';
+import { conducteurLabel, niveauLabel, passagerLabel, type Profile } from '../types/profile';
 import type { Trajet } from '../types/trajet';
 import type { RideRequest, RideRequestStatus } from '../types/rideRequest';
 import OnboardingScreen from './OnboardingScreen';
@@ -154,7 +154,7 @@ export default function ProfileScreen() {
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.prenom}>{profile.prenom}</Text>
             <Text style={styles.subline}>
-              {NIVEAU_LABELS[profile.niveau]}
+              {niveauLabel(profile.niveau, profile.genre)}
               {profile.ville ? ` · ${profile.ville}` : ''}
             </Text>
             {auth.currentUser?.email && (
@@ -246,7 +246,9 @@ export default function ProfileScreen() {
                           month: 'short',
                         })}
                         {' · '}
-                        {isDriver ? 'Conducteur·rice' : `Passager chez ${trip.conducteurPrenom}`}
+                        {isDriver
+                          ? conducteurLabel(profile.genre)
+                          : `${passagerLabel(profile.genre)} chez ${trip.conducteurPrenom}`}
                       </Text>
                     </View>
                     {request && (

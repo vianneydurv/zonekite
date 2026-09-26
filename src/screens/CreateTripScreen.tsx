@@ -137,6 +137,7 @@ export default function CreateTripScreen({ navigation, route }: Props) {
         conducteurUid: auth.currentUser?.uid,
         conducteurPrenom: profile?.prenom ?? 'Moi',
         conducteurPhotoUri: profile?.photoUri,
+        conducteurGenre: profile?.genre,
         date: localDateIso(selectedDate),
         heureDepart,
         heureRetourEstimee: heureRetour ?? undefined,

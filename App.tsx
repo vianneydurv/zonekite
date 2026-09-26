@@ -49,7 +49,7 @@ export default function App() {
   // des trajets publiés avant (photo locale illisible par les autres).
   useEffect(() => {
     if (user && profile && isRemotePhoto(profile.photoUri)) {
-      syncDriverInfoOnMyTrips(user.uid, profile.prenom, profile.photoUri).catch(() => {});
+      syncDriverInfoOnMyTrips(user.uid, profile).catch(() => {});
     }
   }, [user, profile]);
 
@@ -74,10 +74,10 @@ export default function App() {
         <AuthScreen />
       ) : profile === null ? (
         <OnboardingScreen onComplete={setProfile} />
-      ) : profile && !isRemotePhoto(profile.photoUri) ? (
-        // Profil créé avant l'hébergement des photos sur Cloudinary : sa
-        // photo locale n'est visible par personne d'autre, on redemande
-        // d'en choisir une (le reste du profil est pré-rempli).
+      ) : profile && (!isRemotePhoto(profile.photoUri) || !profile.genre) ? (
+        // Profil incomplet, créé avant l'ajout d'un champ désormais requis :
+        // photo encore locale (invisible des autres, avant Cloudinary) ou
+        // genre manquant. On redemande de compléter, le reste est pré-rempli.
         <OnboardingScreen initialProfile={profile} onComplete={setProfile} />
       ) : (
         <RootNavigator />
