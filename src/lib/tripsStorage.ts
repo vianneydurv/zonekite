@@ -3,6 +3,7 @@ import { db } from './firebase';
 import type { Trajet } from '../types/trajet';
 import type { Profile } from '../types/profile';
 import { localDateIso } from './matching';
+import { autoFlagIfOffensive } from './moderation';
 
 const tripsCollection = collection(db, 'trips');
 
@@ -28,6 +29,10 @@ export async function addTrip(trip: Trajet): Promise<void> {
     Object.entries(trip).filter(([, value]) => value !== undefined)
   ) as unknown as Trajet;
   await setDoc(doc(tripsCollection, trip.id), clean);
+  const freeText = [trip.adresseDepart, trip.adresseDepartDetail, trip.vehicule, trip.materielMax]
+    .filter(Boolean)
+    .join('\n');
+  await autoFlagIfOffensive(freeText, { targetType: 'trip', tripId: trip.id, targetPrenom: trip.conducteurPrenom });
 }
 
 export async function deleteTrip(tripId: string): Promise<void> {

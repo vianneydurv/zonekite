@@ -7,7 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import SearchStackNavigator from './SearchStackNavigator';
 import CarpoolStackNavigator from './CarpoolStackNavigator';
 import ForumStackNavigator from './ForumStackNavigator';
-import ProfileScreen from '../screens/ProfileScreen';
+import ProfileStackNavigator from './ProfileStackNavigator';
 import { colors } from '../theme';
 
 // Le prototype Claude Design n'a que 4 onglets (pas de "Spots" séparé : on y
@@ -36,13 +36,18 @@ export default function RootNavigator() {
   const lastResponse = Notifications.useLastNotificationResponse();
 
   useEffect(() => {
-    const tripId = lastResponse?.notification.request.content.data?.tripId;
-    if (!ready || typeof tripId !== 'string') return;
-    // Ouvre le trajet concerné dans l'onglet Covoit.
-    (navigationRef.navigate as (...args: unknown[]) => void)('Carpool', {
-      screen: 'TripDetail',
-      params: { tripId },
-    });
+    const data = lastResponse?.notification.request.content.data;
+    if (!ready || !data) return;
+    const navigate = navigationRef.navigate as (...args: unknown[]) => void;
+    if (data.admin === true) {
+      // Alerte de modération : ouvre l'espace admin.
+      navigate('Profile', { screen: 'Admin' });
+    } else if (typeof data.tripId === 'string') {
+      // Ouvre le trajet concerné dans l'onglet Covoit.
+      navigate('Carpool', { screen: 'TripDetail', params: { tripId: data.tripId } });
+    } else if (typeof data.postId === 'string') {
+      navigate('Forum', { screen: 'PostDetail', params: { postId: data.postId } });
+    }
   }, [ready, lastResponse]);
 
   return (
@@ -64,7 +69,7 @@ export default function RootNavigator() {
         <Tab.Screen name="Search" component={SearchStackNavigator} options={{ title: 'Recherche' }} />
         <Tab.Screen name="Carpool" component={CarpoolStackNavigator} options={{ title: 'Covoit' }} />
         <Tab.Screen name="Forum" component={ForumStackNavigator} options={{ title: 'Forum' }} />
-        <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
+        <Tab.Screen name="Profile" component={ProfileStackNavigator} options={{ title: 'Profil' }} />
       </Tab.Navigator>
     </NavigationContainer>
   );

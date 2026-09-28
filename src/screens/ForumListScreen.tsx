@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ForumStackParamList } from '../navigation/ForumStackNavigator';
 import { colors, typography } from '../theme';
 import { getPosts } from '../lib/forumStorage';
+import { getMemberCount } from '../lib/members';
 import type { ForumPost, ForumTag } from '../types/forum';
 import PostCard from '../components/PostCard';
 
@@ -17,10 +18,13 @@ const FILTERS: ('TOUT' | ForumTag)[] = ['TOUT', 'SESSIONS', 'MATÉRIEL', 'SPOTS'
 export default function ForumListScreen({ navigation }: Props) {
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [filter, setFilter] = useState<'TOUT' | ForumTag>('TOUT');
+  const [memberCount, setMemberCount] = useState<number | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       getPosts().then(setPosts);
+      // Recompté à chaque retour sur l'onglet : suit les nouvelles inscriptions.
+      getMemberCount().then(setMemberCount).catch(() => {});
     }, [])
   );
 
@@ -31,7 +35,11 @@ export default function ForumListScreen({ navigation }: Props) {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           <Text style={styles.headerTitle}>FORUM</Text>
-          <Text style={styles.headerMeta}>712 MEMBRES</Text>
+          {memberCount != null && (
+            <Text style={styles.headerMeta}>
+              {memberCount} MEMBRE{memberCount > 1 ? 'S' : ''}
+            </Text>
+          )}
         </View>
         <View style={styles.filterRow}>
           {FILTERS.map((f) => (

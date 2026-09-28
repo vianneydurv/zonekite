@@ -86,71 +86,75 @@ export default function SpotDetailScreen({ route }: Props) {
     );
   }
 
+  // La photo défile avec le reste de la fiche ; le bandeau verdict (2e
+  // enfant) reste accroché en haut de l'écran une fois la photo passée.
   return (
     <View style={styles.container}>
-      {hero}
+      <ScrollView stickyHeaderIndices={[1]}>
+        {hero}
 
-      <View style={[styles.verdictBanner, { backgroundColor: condition.color }]}>
-        <Text style={styles.verdictText}>{condition.verdict}</Text>
-        <Text style={styles.verdictWindow}>{condition.window}</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{spot.nom}</Text>
-        <Text style={styles.location}>{spot.region}</Text>
-
-        <View style={styles.badgeRow}>
-          {spot.niveauIndicatif && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{spot.niveauIndicatif.toUpperCase()}</Text>
-            </View>
-          )}
-          {spot.contrainteMaree !== 'toutes' && (
-            <View style={[styles.badge, styles.badgeNeutral]}>
-              <Text style={[styles.badgeText, styles.badgeNeutralText]}>MARÉE SENSIBLE</Text>
-            </View>
-          )}
+        <View style={[styles.verdictBanner, { backgroundColor: condition.color }]}>
+          <Text style={styles.verdictText}>{condition.verdict}</Text>
+          <Text style={styles.verdictWindow}>{condition.window}</Text>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardEyebrow}>PRÉVISIONS</Text>
+        <View style={styles.content}>
+          <Text style={styles.title}>{spot.nom}</Text>
+          <Text style={styles.location}>{spot.region}</Text>
+
+          <View style={styles.badgeRow}>
+            {spot.niveauIndicatif && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{spot.niveauIndicatif.toUpperCase()}</Text>
+              </View>
+            )}
+            {spot.contrainteMaree !== 'toutes' && (
+              <View style={[styles.badge, styles.badgeNeutral]}>
+                <Text style={[styles.badgeText, styles.badgeNeutralText]}>MARÉE SENSIBLE</Text>
+              </View>
+            )}
           </View>
 
-          <ForecastTable
-            spot={spot}
-            initialDate={searchDate}
-            highlightStart={searchStartHour}
-            highlightEnd={searchEndHour}
-            onDayChange={setDayIso}
-          />
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardEyebrow}>PRÉVISIONS</Text>
+            </View>
 
-          <Text style={styles.cardFootnote}>
-            {TIDE_LABELS[spot.contrainteMaree]}
-            {spot.contrainteMareeDetail ? ` — ${spot.contrainteMareeDetail}` : ''}
-          </Text>
+            <ForecastTable
+              spot={spot}
+              initialDate={searchDate}
+              highlightStart={searchStartHour}
+              highlightEnd={searchEndHour}
+              onDayChange={setDayIso}
+            />
 
-          {spot.windguruId != null && (
-            <Pressable
-              style={styles.windguruButton}
-              onPress={() => Linking.openURL(`https://www.windguru.cz/${spot.windguruId}`)}
-            >
-              <Ionicons name="open-outline" size={15} color={colors.blue} />
-              <Text style={styles.windguruButtonText}>VOIR SUR WINDGURU</Text>
-            </Pressable>
+            <Text style={styles.cardFootnote}>
+              {TIDE_LABELS[spot.contrainteMaree]}
+              {spot.contrainteMareeDetail ? ` — ${spot.contrainteMareeDetail}` : ''}
+            </Text>
+
+            {spot.windguruId != null && (
+              <Pressable
+                style={styles.windguruButton}
+                onPress={() => Linking.openURL(`https://www.windguru.cz/${spot.windguruId}`)}
+              >
+                <Ionicons name="open-outline" size={15} color={colors.blue} />
+                <Text style={styles.windguruButtonText}>VOIR SUR WINDGURU</Text>
+              </Pressable>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardEyebrow}>LE SPOT</Text>
+            <Text style={styles.description}>{spot.description}</Text>
+          </View>
+
+          {spot.reglementation && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>{spot.reglementation}</Text>
+            </View>
           )}
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardEyebrow}>LE SPOT</Text>
-          <Text style={styles.description}>{spot.description}</Text>
-        </View>
-
-        {spot.reglementation && (
-          <View style={styles.warningBox}>
-            <Text style={styles.warningText}>{spot.reglementation}</Text>
-          </View>
-        )}
       </ScrollView>
 
       <View style={styles.footer}>

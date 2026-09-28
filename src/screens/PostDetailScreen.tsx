@@ -20,6 +20,8 @@ import { addComment, deleteComment, deletePost, getComments, getPosts, updateCom
 import { getProfile } from '../lib/profileStorage';
 import { auth } from '../lib/firebase';
 import { getTrips } from '../lib/tripsStorage';
+import { isCurrentUserAdmin } from '../lib/admin';
+import ReportModal, { type ReportContext } from '../components/ReportModal';
 import { spots } from '../data/spots';
 import type { ForumComment, ForumPost } from '../types/forum';
 import type { Trajet } from '../types/trajet';
@@ -43,6 +45,8 @@ export default function PostDetailScreen({ route }: Props) {
   const [trips, setTrips] = useState<Trajet[]>([]);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [reportContext, setReportContext] = useState<ReportContext | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,6 +56,7 @@ export default function PostDetailScreen({ route }: Props) {
         if (found) getComments(found).then(setComments);
       });
       getTrips().then(setTrips);
+      isCurrentUserAdmin().then(setIsAdmin);
     }, [postId])
   );
 
@@ -118,6 +123,29 @@ export default function PostDetailScreen({ route }: Props) {
 
   const isPostOwner = post.auteurUid != null && post.auteurUid === auth.currentUser?.uid;
 
+  function reportPost() {
+    if (!post) return;
+    setReportContext({
+      targetType: 'post',
+      postId: post.id,
+      targetUid: post.auteurUid,
+      targetPrenom: post.auteurPrenom,
+      excerpt: `${post.titre}\n${post.contenu}`.slice(0, 500),
+    });
+  }
+
+  function reportComment(comment: ForumComment) {
+    if (!post) return;
+    setReportContext({
+      targetType: 'comment',
+      postId: post.id,
+      commentId: comment.id,
+      targetUid: comment.auteurUid,
+      targetPrenom: comment.auteurPrenom,
+      excerpt: comment.contenu.slice(0, 500),
+    });
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -130,19 +158,26 @@ export default function PostDetailScreen({ route }: Props) {
             {comments.length} réponse{comments.length > 1 ? 's' : ''}
           </Text>
         </View>
-        {isPostOwner && (
-          <View style={styles.headerActions}>
+        <View style={styles.headerActions}>
+          {isPostOwner && (
             <Pressable
               style={styles.headerIconButton}
               onPress={() => navigation.navigate('CreatePost', { postId: post.id })}
             >
               <Ionicons name="pencil" size={16} color={colors.neutral.white} />
             </Pressable>
+          )}
+          {!isPostOwner && (
+            <Pressable style={styles.headerIconButton} onPress={reportPost}>
+              <Ionicons name="flag-outline" size={15} color={colors.neutral.white} />
+            </Pressable>
+          )}
+          {(isPostOwner || isAdmin) && (
             <Pressable style={styles.headerIconButton} onPress={handleDeletePost}>
               <Ionicons name="trash" size={16} color={colors.neutral.white} />
             </Pressable>
-          </View>
-        )}
+          )}
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -173,14 +208,25 @@ export default function PostDetailScreen({ route }: Props) {
                     <Text style={styles.authorNameSmall}>{comment.auteurPrenom}</Text>
                     <Text style={styles.authorMetaSmall}>{formatDate(comment.date)}</Text>
                   </View>
-                  {isCommentOwner && !isEditing && (
+                  {!isEditing && (
                     <View style={styles.headerActions}>
-                      <Pressable style={styles.commentIconButton} onPress={() => startEditComment(comment)}>
-                        <Ionicons name="pencil" size={13} color={colors.navy(0.5)} />
-                      </Pressable>
-                      <Pressable style={styles.commentIconButton} onPress={() => handleDeleteComment(comment)}>
-                        <Ionicons name="trash" size={13} color={colors.navy(0.5)} />
-                      </Pressable>
+                      {isCommentOwner && (
+                        <Pressable style={styles.commentIconButton} onPress={() => startEditComment(comment)}>
+                          <Ionicons name="pencil" size={13} color={colors.navy(0.5)} />
+                        </Pressable>
+                      )}
+                      {!isCommentOwner && (
+                        <Pressable style={styles.commentIconButton} onPress={() => reportComment(comment)}>
+                          <Ionicons name="flag-outline" size={13} color={colors.navy(0.4)} />
+                        </Pressable>
+                      )}
+                      {/* Les anciennes réponses sans auteurUid vivent dans le post
+                          lui-même (hors sous-collection) : pas supprimables ici. */}
+                      {(isCommentOwner || (isAdmin && comment.auteurUid != null)) && (
+                        <Pressable style={styles.commentIconButton} onPress={() => handleDeleteComment(comment)}>
+                          <Ionicons name="trash" size={13} color={colors.navy(0.5)} />
+                        </Pressable>
+                      )}
                     </View>
                   )}
                 </View>
@@ -245,6 +291,12 @@ export default function PostDetailScreen({ route }: Props) {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <ReportModal
+        context={reportContext}
+        title={reportContext?.targetType === 'comment' ? 'Signaler cette réponse' : 'Signaler ce sujet'}
+        onClose={() => setReportContext(null)}
+      />
     </SafeAreaView>
   );
 }

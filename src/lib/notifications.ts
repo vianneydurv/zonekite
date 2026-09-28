@@ -16,6 +16,9 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 // Données jointes à chaque notification : ce qu'il faut ouvrir à l'appui.
 export interface PushData {
   tripId?: string;
+  postId?: string;
+  // Alerte de modération : ouvre l'espace admin.
+  admin?: boolean;
 }
 
 // Notification reçue app ouverte : on l'affiche quand même en bannière.

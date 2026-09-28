@@ -16,16 +16,20 @@ import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import LoadingScreen from './src/screens/LoadingScreen';
+import BannedScreen from './src/screens/BannedScreen';
 import { subscribeToAuth } from './src/lib/auth';
 import { getProfile } from './src/lib/profileStorage';
 import { isRemotePhoto } from './src/lib/cloudinary';
 import { syncDriverInfoOnMyTrips } from './src/lib/tripsStorage';
 import { registerForPushNotifications } from './src/lib/notifications';
+import { syncMemberEntry } from './src/lib/members';
+import { isBanned } from './src/lib/admin';
 import type { Profile } from './src/types/profile';
 
 export default function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
+  const [banned, setBanned] = useState(false);
   const [fontsLoaded] = useFonts({
     Archivo_400Regular,
     Archivo_500Medium,
@@ -38,13 +42,24 @@ export default function App() {
   useEffect(() => {
     return subscribeToAuth((u) => {
       setUser(u);
-      if (!u) setProfile(undefined);
+      if (!u) {
+        setProfile(undefined);
+        setBanned(false);
+      }
     });
   }, []);
 
   useEffect(() => {
-    if (user) getProfile().then(setProfile);
+    if (!user) return;
+    getProfile().then(setProfile);
+    isBanned(user.uid).then(setBanned);
   }, [user]);
+
+  // Rattrapage : les comptes créés avant l'annuaire des membres y sont
+  // ajoutés au lancement (compteur de membres du forum).
+  useEffect(() => {
+    if (user && profile) syncMemberEntry(user.uid, profile).catch(() => {});
+  }, [user, profile]);
 
   // Enregistre ce téléphone pour les notifications (demande l'autorisation
   // au premier lancement), une fois le profil complet.
@@ -81,6 +96,8 @@ export default function App() {
         <LoadingScreen />
       ) : user === null ? (
         <AuthScreen />
+      ) : banned ? (
+        <BannedScreen />
       ) : profile === null ? (
         <OnboardingScreen onComplete={setProfile} />
       ) : profile && (!isRemotePhoto(profile.photoUri) || !profile.genre) ? (

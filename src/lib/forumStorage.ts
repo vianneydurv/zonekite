@@ -10,6 +10,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { autoFlagIfOffensive } from './moderation';
 import type { ForumComment, ForumPost } from '../types/forum';
 
 const postsCollection = collection(db, 'forumPosts');
@@ -21,6 +22,11 @@ export async function getPosts(): Promise<ForumPost[]> {
 
 export async function addPost(post: ForumPost): Promise<void> {
   await setDoc(doc(postsCollection, post.id), { ...post, auteurUid: auth.currentUser?.uid, commentCount: 0 });
+  await autoFlagIfOffensive(`${post.titre}\n${post.contenu}`, {
+    targetType: 'post',
+    postId: post.id,
+    targetPrenom: post.auteurPrenom,
+  });
 }
 
 export async function updatePost(
@@ -28,6 +34,7 @@ export async function updatePost(
   fields: Pick<ForumPost, 'titre' | 'contenu' | 'tag'>
 ): Promise<void> {
   await updateDoc(doc(postsCollection, postId), fields);
+  await autoFlagIfOffensive(`${fields.titre}\n${fields.contenu}`, { targetType: 'post', postId });
 }
 
 export async function deletePost(postId: string): Promise<void> {
@@ -50,10 +57,17 @@ export async function getComments(post: ForumPost): Promise<ForumComment[]> {
 export async function addComment(postId: string, comment: ForumComment): Promise<void> {
   await setDoc(doc(commentsCollection(postId), comment.id), { ...comment, auteurUid: auth.currentUser?.uid });
   await updateDoc(doc(postsCollection, postId), { commentCount: increment(1) });
+  await autoFlagIfOffensive(comment.contenu, {
+    targetType: 'comment',
+    postId,
+    commentId: comment.id,
+    targetPrenom: comment.auteurPrenom,
+  });
 }
 
 export async function updateComment(postId: string, commentId: string, contenu: string): Promise<void> {
   await updateDoc(doc(commentsCollection(postId), commentId), { contenu });
+  await autoFlagIfOffensive(contenu, { targetType: 'comment', postId, commentId });
 }
 
 export async function deleteComment(postId: string, commentId: string): Promise<void> {

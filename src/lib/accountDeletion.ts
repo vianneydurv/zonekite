@@ -1,8 +1,9 @@
 import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
-// Supprime les données Firestore possédées par le compte : profil, trajets
-// publiés, demandes de covoiturage, sujets de forum. Les commentaires de
+// Supprime les données Firestore possédées par le compte : profil, entrée
+// de l'annuaire des membres, trajets publiés, demandes de covoiturage,
+// sujets de forum. Les commentaires de
 // forum laissés par le compte (sous-collection forumPosts/*/comments) ne
 // sont volontairement pas nettoyés ici : les retrouver demanderait une
 // requête "collection group" nécessitant un index Firestore dédié, non
@@ -23,6 +24,7 @@ export async function deleteMyData(): Promise<void> {
     ...requests.docs.map((d) => deleteDoc(d.ref)),
     ...posts.docs.map((d) => deleteDoc(d.ref)),
     deleteDoc(doc(db, 'profiles', uid)),
+    deleteDoc(doc(db, 'members', uid)),
     deleteDoc(doc(db, 'pushTokens', uid)),
   ]);
 }

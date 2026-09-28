@@ -13,6 +13,8 @@ import type { Trajet } from '../types/trajet';
 import { isRemotePhoto } from '../lib/cloudinary';
 import { conducteurLabel, type Profile } from '../types/profile';
 import type { RideRequest } from '../types/rideRequest';
+import { isCurrentUserAdmin } from '../lib/admin';
+import ReportModal, { type ReportContext } from '../components/ReportModal';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'TripDetail'>;
 
@@ -28,6 +30,8 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   const [myRequest, setMyRequest] = useState<RideRequest | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [requests, setRequests] = useState<RideRequest[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [reportContext, setReportContext] = useState<ReportContext | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -35,6 +39,7 @@ export default function TripDetailScreen({ route, navigation }: Props) {
       getProfile().then(setProfile);
       getRequestsForTrips([tripId]).then(setRequests);
       getMyRequests().then((reqs) => setMyRequest(reqs.find((r) => r.tripId === tripId) ?? null));
+      isCurrentUserAdmin().then(setIsAdmin);
     }, [tripId])
   );
 
@@ -86,9 +91,33 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={20} color={colors.neutral.white} />
-        </Pressable>
+        <View style={styles.headerTopRow}>
+          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={20} color={colors.neutral.white} />
+          </Pressable>
+          {!isDriver && (
+            <View style={styles.headerActions}>
+              <Pressable
+                style={styles.backButton}
+                onPress={() =>
+                  setReportContext({
+                    targetType: 'trip',
+                    tripId: trip.id,
+                    targetUid: trip.conducteurUid,
+                    targetPrenom: trip.conducteurPrenom,
+                  })
+                }
+              >
+                <Ionicons name="flag-outline" size={16} color={colors.neutral.white} />
+              </Pressable>
+              {isAdmin && (
+                <Pressable style={styles.backButton} onPress={handleDelete}>
+                  <Ionicons name="trash" size={16} color={colors.neutral.white} />
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
         <Text style={styles.headerTitle}>Paris → {spot?.nom ?? 'Spot inconnu'}</Text>
         <Text style={styles.headerSub}>{formatDate(trip.date)}</Text>
       </View>
@@ -239,6 +268,13 @@ export default function TripDetailScreen({ route, navigation }: Props) {
         </View>
       )}
 
+      <ReportModal
+        context={reportContext}
+        title={`Signaler ${trip.conducteurPrenom}`}
+        subtitle="Comportement déplacé, trajet douteux, annonce inappropriée… Explique ce qui pose problème, l'équipe ZoneKite s'en occupe."
+        onClose={() => setReportContext(null)}
+      />
+
       <Modal visible={showSheet} transparent animationType="fade">
         <View style={styles.sheetBackdrop}>
           <View style={styles.sheet}>
@@ -263,6 +299,8 @@ export default function TripDetailScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.neutral.background },
   header: { backgroundColor: colors.navyBase, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
+  headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerActions: { flexDirection: 'row', gap: 8 },
   backButton: {
     width: 34,
     height: 34,

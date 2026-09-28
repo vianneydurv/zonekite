@@ -1,6 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Admin : compte présent dans admins/{uid}. Ces documents se créent
+    // uniquement depuis la console Firebase (aucune écriture depuis l'app).
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Membre banni par un admin : ne peut plus rien publier.
+    function isBanned() {
+      return exists(/databases/$(database)/documents/bans/$(request.auth.uid));
+    }
+
+    match /admins/{userId} {
+      // Lisible par tous les membres : l'app de chacun doit savoir à qui
+      // envoyer les alertes de modération.
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Bannissements : posés/levés par un admin, lisibles par l'intéressé
+    // (écran « compte suspendu ») et par les admins.
+    match /bans/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Annuaire public des membres (prénom, photo) : sert au compteur de
+    // membres du forum et à la liste des membres de l'espace admin.
+    match /members/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Signalements (manuels ou automatiques) : créés par n'importe quel
+    // membre en son nom, lus et traités par les admins uniquement.
+    match /reports/{reportId} {
+      allow create: if request.auth != null && request.resource.data.reporterUid == request.auth.uid;
+      allow read, delete: if isAdmin();
+    }
+
+    // Retours / avis envoyés depuis le profil : même principe.
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read, delete: if isAdmin();
+    }
+
     // Profil utilisateur : lisible/modifiable uniquement par son propriétaire.
     match /profiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -23,11 +70,13 @@ service cloud.firestore {
     // demande de place).
     match /trips/{tripId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.conducteurUid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.conducteurUid == request.auth.uid
+        && !isBanned();
       allow update: if request.auth != null
         && resource.data.conducteurUid == request.auth.uid
         && request.resource.data.conducteurUid == resource.data.conducteurUid;
-      allow delete: if request.auth != null && resource.data.conducteurUid == request.auth.uid;
+      allow delete: if request.auth != null && (resource.data.conducteurUid == request.auth.uid || isAdmin());
     }
 
     // Sujets de forum : visibles par tous les membres connectés, créés
@@ -39,7 +88,9 @@ service cloud.firestore {
     // pour les nouveaux posts).
     match /forumPosts/{postId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.auteurUid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.auteurUid == request.auth.uid
+        && !isBanned();
       allow update: if request.auth != null
         && (
           (resource.data.auteurUid == request.auth.uid
@@ -47,20 +98,24 @@ service cloud.firestore {
           || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
             // .get(key, 0) : les posts créés avant l'introduction de
             // commentCount n'ont pas ce champ, on part de 0 pour eux.
-            && request.resource.data.commentCount == resource.data.get('commentCount', 0) + 1)
+            // -1 : suppression d'une réponse (par son auteur ou un admin).
+            && (request.resource.data.commentCount == resource.data.get('commentCount', 0) + 1
+              || request.resource.data.commentCount == resource.data.get('commentCount', 0) - 1))
         );
-      allow delete: if request.auth != null && resource.data.auteurUid == request.auth.uid;
+      allow delete: if request.auth != null && (resource.data.auteurUid == request.auth.uid || isAdmin());
 
       // Réponses à un sujet : lisibles par tous les membres connectés,
       // créées par leur auteur pour lui-même, éditées/supprimées
       // uniquement par ce même auteur (auteurUid), sans réattribution.
       match /comments/{commentId} {
         allow read: if request.auth != null;
-        allow create: if request.auth != null && request.resource.data.auteurUid == request.auth.uid;
+        allow create: if request.auth != null
+          && request.resource.data.auteurUid == request.auth.uid
+          && !isBanned();
         allow update: if request.auth != null
           && resource.data.auteurUid == request.auth.uid
           && request.resource.data.auteurUid == resource.data.auteurUid;
-        allow delete: if request.auth != null && resource.data.auteurUid == request.auth.uid;
+        allow delete: if request.auth != null && (resource.data.auteurUid == request.auth.uid || isAdmin());
       }
     }
 
@@ -76,14 +131,15 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.passagerUid == request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && !isBanned();
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.conducteurUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['accepted', 'refused'];
       // Le demandeur peut supprimer sa propre demande (ex. suppression de
       // compte).
-      allow delete: if request.auth != null && resource.data.passagerUid == request.auth.uid;
+      allow delete: if request.auth != null && (resource.data.passagerUid == request.auth.uid || isAdmin());
     }
   }
 }

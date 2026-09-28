@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { syncMemberEntry } from './members';
 import type { Profile } from '../types/profile';
 
 function profileDoc(uid: string) {
@@ -17,4 +18,6 @@ export async function saveProfile(profile: Profile): Promise<void> {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Aucun utilisateur connecté');
   await setDoc(profileDoc(uid), profile, { merge: true });
+  // Annuaire public (compteur de membres du forum) : non bloquant.
+  await syncMemberEntry(uid, profile).catch(() => {});
 }
