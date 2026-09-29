@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -85,16 +86,25 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, []);
 
-  if (!fontsLoaded) return null;
-
   const stillLoading = user === undefined || (user && profile === undefined) || !minDelayElapsed;
+
+  // Fondu de sortie de l'écran de chargement : l'app s'affiche dessous et la
+  // photo s'efface doucement par-dessus, au lieu d'une coupure nette.
+  const loadingOpacity = useRef(new Animated.Value(1)).current;
+  const [loadingVisible, setLoadingVisible] = useState(true);
+  useEffect(() => {
+    if (stillLoading || !fontsLoaded) return;
+    Animated.timing(loadingOpacity, { toValue: 0, duration: 900, useNativeDriver: true }).start(() =>
+      setLoadingVisible(false)
+    );
+  }, [stillLoading, fontsLoaded, loadingOpacity]);
+
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>
-      <StatusBar style={profile ? 'dark' : 'light'} />
-      {stillLoading ? (
-        <LoadingScreen />
-      ) : user === null ? (
+      <StatusBar style={profile && !loadingVisible ? 'dark' : 'light'} />
+      {stillLoading ? null : user === null ? (
         <AuthScreen />
       ) : banned ? (
         <BannedScreen />
@@ -107,6 +117,11 @@ export default function App() {
         <OnboardingScreen initialProfile={profile} onComplete={setProfile} />
       ) : (
         <RootNavigator />
+      )}
+      {loadingVisible && (
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: loadingOpacity }]} pointerEvents="none">
+          <LoadingScreen />
+        </Animated.View>
       )}
     </SafeAreaProvider>
   );

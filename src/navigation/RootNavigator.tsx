@@ -55,6 +55,9 @@ export default function RootNavigator() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
+          // Fondu rapide au changement d'onglet plutôt qu'une coupure nette.
+          animation: 'fade',
+          transitionSpec: { animation: 'timing', config: { duration: 180 } },
           tabBarActiveTintColor: colors.blue,
           tabBarInactiveTintColor: colors.navy(0.45),
           tabBarStyle: {
