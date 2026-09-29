@@ -21,6 +21,8 @@ import { getProfile } from '../lib/profileStorage';
 import { auth } from '../lib/firebase';
 import { getTrips } from '../lib/tripsStorage';
 import { isCurrentUserAdmin } from '../lib/admin';
+import { getMemberPhotos } from '../lib/members';
+import Avatar from '../components/Avatar';
 import ReportModal, { type ReportContext } from '../components/ReportModal';
 import { spots } from '../data/spots';
 import type { ForumComment, ForumPost } from '../types/forum';
@@ -47,6 +49,7 @@ export default function PostDetailScreen({ route }: Props) {
   const [editingCommentText, setEditingCommentText] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [reportContext, setReportContext] = useState<ReportContext | null>(null);
+  const [memberPhotos, setMemberPhotos] = useState<Record<string, string>>({});
 
   useFocusEffect(
     useCallback(() => {
@@ -57,6 +60,7 @@ export default function PostDetailScreen({ route }: Props) {
       });
       getTrips().then(setTrips);
       isCurrentUserAdmin().then(setIsAdmin);
+      getMemberPhotos().then(setMemberPhotos).catch(() => {});
     }, [postId])
   );
 
@@ -120,6 +124,16 @@ export default function PostDetailScreen({ route }: Props) {
   }
 
   if (!post) return null;
+
+  // Photo actuelle de l'auteur (annuaire), à défaut celle enregistrée avec
+  // le message.
+  const photoOf = (m: { auteurUid?: string; auteurPhotoUri?: string }) =>
+    (m.auteurUid && memberPhotos[m.auteurUid]) || m.auteurPhotoUri;
+
+  // Fiche publique de l'auteur (les anciens messages sans uid ne mènent nulle part).
+  function openMember(m: { auteurUid?: string; auteurPrenom: string }) {
+    if (m.auteurUid) navigation.navigate('MemberProfile', { uid: m.auteurUid, prenom: m.auteurPrenom });
+  }
 
   const isPostOwner = post.auteurUid != null && post.auteurUid === auth.currentUser?.uid;
 
@@ -187,12 +201,13 @@ export default function PostDetailScreen({ route }: Props) {
       >
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.card}>
-            <View style={styles.authorRow}>
+            <Pressable style={styles.authorRow} onPress={() => openMember(post)} disabled={!post.auteurUid}>
+              <Avatar prenom={post.auteurPrenom} photoUri={photoOf(post)} size={38} />
               <View>
                 <Text style={styles.authorName}>{post.auteurPrenom}</Text>
                 <Text style={styles.authorMeta}>{formatDate(post.date)}</Text>
               </View>
-            </View>
+            </Pressable>
             <Text style={styles.postText}>{post.contenu}</Text>
           </View>
 
@@ -204,10 +219,17 @@ export default function PostDetailScreen({ route }: Props) {
             return (
               <View key={comment.id} style={[styles.card, styles.replyCard]}>
                 <View style={styles.authorRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.authorNameSmall}>{comment.auteurPrenom}</Text>
-                    <Text style={styles.authorMetaSmall}>{formatDate(comment.date)}</Text>
-                  </View>
+                  <Pressable
+                    style={[styles.authorRow, { flex: 1 }]}
+                    onPress={() => openMember(comment)}
+                    disabled={!comment.auteurUid}
+                  >
+                    <Avatar prenom={comment.auteurPrenom} photoUri={photoOf(comment)} size={30} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.authorNameSmall}>{comment.auteurPrenom}</Text>
+                      <Text style={styles.authorMetaSmall}>{formatDate(comment.date)}</Text>
+                    </View>
+                  </Pressable>
                   {!isEditing && (
                     <View style={styles.headerActions}>
                       {isCommentOwner && (

@@ -31,6 +31,7 @@ export const spots: Spot[] = [
     directionsFavorables: ['SW', 'S', 'NE'],
     contrainteMaree: 'mi_maree_basse',
     contrainteMareeDetail: 'Marée descendante',
+    niveauIndicatif: 'Débutant par vent léger, intermédiaire à confirmé au-delà de 15-20 nœuds',
     reglementation: 'Zone kite balisée en été, licence FFVL/AF-Kite obligatoire.',
     source: 'letskite.ch, kitetrip-planner.com',
   },
@@ -44,12 +45,14 @@ export const spots: Spot[] = [
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/50/00_0042_Strand_von_Sangatte.jpg',
     windguruId: 48350,
     description:
-      "Proche de Wissant, downwind possible Wissant → Sangatte le long des falaises. À compléter : vent/marée précis.",
+      "Au pied du Cap Blanc-Nez : l'effet venturi ajoute régulièrement 5 à 15 nœuds aux prévisions. Vagues longues par SO/O. Départ sur 15 m de galets puis sable. Downwind possible Wissant → Sangatte le long des falaises. Vent de SE offshore : ne pas naviguer.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
-    contrainteMaree: 'inconnue',
-    source: 'wimkite.com',
+    directionsFavorables: ['SW', 'W', 'NW', 'NE'],
+    contrainteMaree: 'mi_maree_basse',
+    contrainteMareeDetail: 'De marée basse à mi-marée ; à marée haute la mer monte contre la digue, ne pas pratiquer.',
+    niveauIndicatif: 'Intermédiaire',
+    source: "Let's Kite, wimkite.com",
   },
   {
     id: 'le-crotoy',
@@ -87,6 +90,7 @@ export const spots: Spot[] = [
     ventMaxNoeuds: null,
     directionsFavorables: ['S', 'SW', 'W', 'NW', 'N'],
     contrainteMaree: 'toutes',
+    niveauIndicatif: 'Débutant à marée basse (bâches), intermédiaire+ à marée haute (shore break)',
     source: 'theridery.com, thespot2be.com, zonextrem.fr',
   },
 
@@ -108,6 +112,7 @@ export const spots: Spot[] = [
     ventMaxNoeuds: 25,
     directionsFavorables: ['N', 'S'],
     contrainteMaree: 'toutes',
+    niveauIndicatif: 'Tous niveaux, idéal pour apprendre',
     reglementation:
       "Kite autorisé toute l'année sur l'ensemble de la plage, sauf du 16 juin au 15 septembre où la pratique est limitée à la zone entre l'estuaire de l'Orne et le chenal kite n°1 (à l'ouest des bouées). 300 derniers mètres à l'ouest interdits (réserve de chasse).",
     source: 'kazaden.com, hintigo.fr, letskite.ch',
@@ -127,6 +132,7 @@ export const spots: Spot[] = [
     ventMaxNoeuds: 28,
     directionsFavorables: ['W', 'SW'],
     contrainteMaree: 'maree_basse',
+    niveauIndicatif: 'Confirmé à expert (vagues)',
     source: 'thecornershop.fr',
   },
   {
@@ -138,12 +144,14 @@ export const spots: Spot[] = [
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Plage_de_Saint_Aubin_sur_Mer%2C_Calvados_-_fin_mars_2016.jpg',
     windguruId: 3627,
-    description: 'À compléter : vent/marée précis.',
+    description:
+      "Côte de Nacre, plage de sable orientée nord entre Langrune et Bernières : vents onshore de NE à NO. Spot de marée, vérifier les horaires. Conditions déduites des spots voisins (Langrune, Bernières).",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
+    directionsFavorables: ['NE', 'N', 'NW'],
     contrainteMaree: 'inconnue',
-    source: 'À compléter par la communauté',
+    niveauIndicatif: 'Intermédiaire',
+    source: "Let's Kite (Langrune-sur-Mer, Bernières-sur-Mer)",
   },
   {
     id: 'vierville-sur-mer',
@@ -154,12 +162,15 @@ export const spots: Spot[] = [
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ea/Omaha_Beach_2008_PD_03.JPG',
     windguruId: 109136,
-    description: 'À compléter : vent/marée précis.',
+    description:
+      "Extrémité ouest d'Omaha Beach : 2,5 km de sable fin, plage très étroite à marée haute et très large à marée basse. Houle par vent de SO. Bon terrain de downwind.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
-    contrainteMaree: 'inconnue',
-    source: 'À compléter par la communauté',
+    directionsFavorables: ['SW', 'W', 'NW'],
+    contrainteMaree: 'variable',
+    contrainteMareeDetail: 'Flat à marée basse, vagues à marée montante et descendante ; attention aux rochers à marée basse par gros coefficient.',
+    niveauIndicatif: 'Débutant à intermédiaire',
+    source: 'Gîtes de France Calvados, Plages.tv, Sportihome',
   },
   {
     id: 'colleville-montgomery',
@@ -170,12 +181,15 @@ export const spots: Spot[] = [
     mareeRef: '2026-08-29T12:19:00+02:00', // ancre M2 : pleine mer Ouistreham/Caen
     photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Plage_Colleville-Montgomery.JPG',
     windguruId: 102826,
-    description: 'À compléter : vent/marée précis.',
+    description:
+      "Plage préservée (dunes, pas de digue) près du brise-lames de Ouistreham. Brise de mer de NE l'après-midi en été (15-18 nœuds), renforcée par l'effet venturi de l'estuaire de l'Orne. Clapot par vent fort onshore. Éviter les vents de sud (offshore) et ne pas décoller près de la digue.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
-    contrainteMaree: 'inconnue',
-    source: 'À compléter par la communauté',
+    directionsFavorables: ['NE', 'N', 'NW'],
+    contrainteMaree: 'maree_basse',
+    contrainteMareeDetail: 'Marée basse uniquement : à marée haute la plage disparaît et le vent est perturbé par le brise-lames.',
+    niveauIndicatif: 'Intermédiaire',
+    source: "Let's Kite, Sportihome",
   },
 
   // ---------------------------------------------------------------
@@ -196,6 +210,7 @@ export const spots: Spot[] = [
     ventMaxNoeuds: null,
     directionsFavorables: ['NW', 'W'],
     contrainteMaree: 'toutes',
+    niveauIndicatif: 'Tous niveaux',
     source: 'kitetrip-planner.com',
   },
   {
@@ -287,7 +302,7 @@ export const spots: Spot[] = [
       "Grande baie de Plestin-les-Grèves (3-4 km), toutes orientations possibles grâce à la géographie. À marée basse, la mer se retire jusqu'à 3 km (flat, pied partout). Croix de Mi-Lieue balisée, aucun rocher.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
+    directionsFavorables: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'],
     contrainteMaree: 'toutes',
     contrainteMareeDetail: 'Sauf 2h avant/après la marée haute par coefficient > 80.',
     niveauIndicatif: 'Tous niveaux',
@@ -309,6 +324,7 @@ export const spots: Spot[] = [
     directionsFavorables: ['S', 'SW', 'SE', 'W', 'NW', 'N'],
     contrainteMaree: 'variable',
     contrainteMareeDetail: 'Prudence à mi-marée (rochers immergés).',
+    niveauIndicatif: 'Intermédiaire à confirmé (rochers, shore break)',
     reglementation:
       'Zone kite réglementée du 1er juillet au 31 août (accord annuel avec la mairie de Guidel) : navigation interdite dans la zone de baignade balisée par bouées jaunes.',
     source: 'Sportihome, Kitetrip-planner, golfedumorbihan56.com, guidelkiteclub.com',
@@ -329,6 +345,7 @@ export const spots: Spot[] = [
     directionsFavorables: ['NW', 'W', 'SW', 'S', 'SE', 'E'],
     contrainteMaree: 'maree_haute',
     contrainteMareeDetail: 'Remplissage à mi-marée.',
+    niveauIndicatif: 'Tous niveaux, idéal débutants (plan d’eau plat)',
     reglementation:
       "Du 1er octobre au 30 avril, navigation interdite dans le tiers nord de la Petite Mer pour protéger l'avifaune (charte 2011 des kiters de Gâvres, à reconfirmer). Zone aussi soumise à contraintes militaires (tir DGA, drapeau rouge = fermeture).",
     source: 'Kitetrip-planner, golfedumorbihan56.com, radedelorient.n2000.fr',
@@ -346,9 +363,10 @@ export const spots: Spot[] = [
       "Spot principal de la presqu'île de Rhuys. Marée basse pour le flat, belle houle à marée haute. Zone de cours dédiée.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: ['W', 'SW'],
+    directionsFavorables: ['W', 'SW', 'S', 'SE'],
     contrainteMaree: 'variable',
     contrainteMareeDetail: 'Flat à marée basse, houle à marée haute — praticable à toute marée selon ce qu\'on cherche.',
+    niveauIndicatif: 'Débutant à intermédiaire (zone de cours)',
     source: 'Kite2Rhuys, Kitetrip-planner',
   },
   {
@@ -364,9 +382,10 @@ export const spots: Spot[] = [
       "Pointe de la chapelle : lagune peu profonde (\"bassine\") praticable à marée haute côté Banastère, houle côté mer.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
+    directionsFavorables: ['NE', 'E', 'SE', 'S', 'SW', 'W'],
     contrainteMaree: 'maree_haute',
     contrainteMareeDetail: 'Bassine praticable à marée haute côté Banastère.',
+    niveauIndicatif: 'Débutant (bassine à marée haute) à confirmé (côté mer)',
     source: 'Camping La Grée Penvins, Kitetrip-planner',
   },
 
@@ -422,9 +441,10 @@ export const spots: Spot[] = [
       "Zone de pratique 300 m de large, libre hors saison, balisée en juillet-août. Spot labellisé FFVL.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
+    directionsFavorables: ['NW', 'W', 'SW', 'S', 'SE'],
     contrainteMaree: 'maree_basse',
     contrainteMareeDetail: 'La plage se réduit fortement à marée haute.',
+    niveauIndicatif: 'Intermédiaire',
     source: "Let's Kite",
   },
   {
@@ -479,7 +499,7 @@ export const spots: Spot[] = [
       "Baie entre le pont et la route submersible du Gois. Plan d'eau parfaitement plat, peu de courant sauf gros coefficient.",
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
-    directionsFavorables: null,
+    directionsFavorables: ['NE', 'E', 'SE'],
     contrainteMaree: 'maree_basse',
     contrainteMareeDetail: 'Idéal -2h/+2h autour de la marée basse.',
     niveauIndicatif: 'Tous niveaux',
@@ -649,11 +669,12 @@ export const spots: Spot[] = [
     ventMinNoeuds: null,
     ventMaxNoeuds: null,
     directionsFavorables: ['W', 'NW'],
-    contrainteMaree: 'inconnue',
+    contrainteMaree: 'variable',
+    contrainteMareeDetail: 'Décoller un peu avant ou après la marée haute (plus de place, moins de perturbations des dunes) ; épi rocheux au sud selon la marée et l\'ensablement.',
     niveauIndicatif: 'Intermédiaire à expert',
     reglementation:
       "Zone kite dédiée signalée de juin à septembre pendant les heures de baignade surveillée, tolérance hors zone jusqu'à 19h (arrêté municipal n°2023/592, à reconfirmer chaque année).",
-    source: "Let's Kite, Fun Kite Sud Ouest, fksudouest.com",
+    source: "Let's Kite, Fun Kite Sud Ouest, fksudouest.com, Zoomkite",
   },
   {
     id: 'la-madrague-anglet',

@@ -124,7 +124,16 @@ export default function TripDetailScreen({ route, navigation }: Props) {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <View style={styles.driverRow}>
+          {/* Touche le conducteur pour voir sa fiche (trajets récents uniquement :
+              les anciens n'ont pas de conducteurUid). */}
+          <Pressable
+            style={styles.driverRow}
+            disabled={!trip.conducteurUid}
+            onPress={() =>
+              trip.conducteurUid &&
+              navigation.navigate('MemberProfile', { uid: trip.conducteurUid, prenom: trip.conducteurPrenom })
+            }
+          >
             {isRemotePhoto(trip.conducteurPhotoUri) ? (
               <Image source={{ uri: trip.conducteurPhotoUri }} style={styles.driverPhoto} />
             ) : (
@@ -134,7 +143,8 @@ export default function TripDetailScreen({ route, navigation }: Props) {
               <Text style={styles.driverName}>{trip.conducteurPrenom}</Text>
               <Text style={styles.driverSub}>{conducteurLabel(trip.conducteurGenre)}</Text>
             </View>
-          </View>
+            {trip.conducteurUid && <Ionicons name="chevron-forward" size={18} color={colors.navy(0.3)} />}
+          </Pressable>
         </View>
 
         <View style={styles.card}>
@@ -184,12 +194,19 @@ export default function TripDetailScreen({ route, navigation }: Props) {
               <View style={{ gap: 10 }}>
                 {requests.map((req) => (
                   <View key={req.id} style={styles.requestRow}>
-                    {isRemotePhoto(req.passagerPhotoUri) ? (
-                      <Image source={{ uri: req.passagerPhotoUri }} style={styles.requestAvatar} />
-                    ) : (
-                      <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]} />
-                    )}
-                    <Text style={styles.requestName}>{req.passagerPrenom}</Text>
+                    <Pressable
+                      style={styles.requestPerson}
+                      onPress={() =>
+                        navigation.navigate('MemberProfile', { uid: req.passagerUid, prenom: req.passagerPrenom })
+                      }
+                    >
+                      {isRemotePhoto(req.passagerPhotoUri) ? (
+                        <Image source={{ uri: req.passagerPhotoUri }} style={styles.requestAvatar} />
+                      ) : (
+                        <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]} />
+                      )}
+                      <Text style={styles.requestName}>{req.passagerPrenom}</Text>
+                    </Pressable>
                     {req.status === 'pending' ? (
                       <View style={styles.requestActions}>
                         <Pressable style={styles.refuseButton} onPress={() => handleRefuse(req)}>
@@ -337,6 +354,7 @@ const styles = StyleSheet.create({
   boardName: { fontFamily: typography.h3.fontFamily, fontSize: 11, color: colors.navy(0.65) },
   emptyRequests: { ...typography.body, color: colors.navy(0.5) },
   requestRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  requestPerson: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   requestAvatar: { width: 36, height: 36, borderRadius: 18 },
   requestAvatarPlaceholder: { backgroundColor: '#CBD8E0' },
   requestName: { flex: 1, fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase },

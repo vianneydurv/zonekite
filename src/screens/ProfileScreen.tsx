@@ -304,7 +304,9 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <View style={styles.card}>
+        {/* Détouré et décollé de l'historique : c'est un message à l'équipe,
+            pas une partie du profil. */}
+        <View style={[styles.card, styles.feedbackCard]}>
           <Text style={styles.cardEyebrow}>TON AVIS COMPTE</Text>
           <Text style={styles.feedbackIntro}>
             Un bug, une idée, un spot qui manque ? Écris-nous, on lit tout.
@@ -484,6 +486,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { padding: 14, paddingTop: 14, gap: 10 },
   card: { backgroundColor: colors.neutral.white, borderRadius: 14, padding: 14 },
+  feedbackCard: { borderWidth: 1, borderColor: colors.blue, marginTop: 18 },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 },
   cardEyebrow: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1 },
   cardLink: { fontFamily: typography.h3.fontFamily, fontSize: 11.5, color: colors.blue },

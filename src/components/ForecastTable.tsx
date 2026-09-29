@@ -135,7 +135,7 @@ export default function ForecastTable({ spot, initialDate, highlightStart, highl
     <View>
       <View style={styles.idealTab}>
         <Ionicons name="star" size={11} color={colors.neutral.white} />
-        <Text style={styles.idealTabText}>CONDITIONS PARFAITES</Text>
+        <Text style={styles.idealTabText}>CONDITIONS PARFAITES DU SPOT</Text>
       </View>
       <View style={styles.idealPanel}>
         <IdealItem icon="speedometer-outline" label="Vent" value={`${windMin}–${windMax} nds`} />

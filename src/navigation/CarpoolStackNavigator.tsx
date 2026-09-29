@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CarpoolListScreen from '../screens/CarpoolListScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import TripDetailScreen from '../screens/TripDetailScreen';
+import MemberProfileScreen, { type MemberProfileParams } from '../screens/MemberProfileScreen';
 import { colors, typography } from '../theme';
 
 export type CarpoolStackParamList = {
@@ -10,6 +11,7 @@ export type CarpoolStackParamList = {
     | { spotId?: string; date?: string; heureDepart?: string; heureRetour?: string; tripId?: string }
     | undefined;
   TripDetail: { tripId: string };
+  MemberProfile: MemberProfileParams;
 };
 
 const Stack = createNativeStackNavigator<CarpoolStackParamList>();
@@ -31,6 +33,7 @@ export default function CarpoolStackNavigator() {
         options={({ route }) => ({ title: route.params?.tripId ? 'Modifier le trajet' : 'Proposer un trajet' })}
       />
       <Stack.Screen name="TripDetail" component={TripDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="MemberProfile" component={MemberProfileScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

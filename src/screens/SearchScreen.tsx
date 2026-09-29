@@ -305,8 +305,7 @@ export default function SearchScreen() {
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent}>
           <Text style={styles.title}>Où et quand tu navigues ?</Text>
           <Text style={styles.subtitle}>
-            Renseigne le jour et le créneau. Le point de départ vient de ton profil, tu peux le
-            changer.
+            Renseigne le jour et le créneau horaire et on va te trouver le spot parfait !
           </Text>
 
           <View style={styles.calendarBox}>

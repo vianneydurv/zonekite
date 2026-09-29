@@ -39,6 +39,11 @@ export interface Profile {
   favoriteSpotIds?: string[];
 }
 
+// Partie du profil visible par les autres membres (fiche membre du forum et
+// du covoit), recopiée dans l'annuaire members/{uid} : le profil complet
+// (profiles/{uid}) reste privé.
+export type PublicProfile = Pick<Profile, 'prenom' | 'photoUri' | 'niveau' | 'genre' | 'ville' | 'materiel'>;
+
 export const GENRE_LABELS: Record<Genre, string> = {
   homme: 'Homme',
   femme: 'Femme',

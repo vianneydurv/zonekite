@@ -2,12 +2,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ForumListScreen from '../screens/ForumListScreen';
 import CreatePostScreen from '../screens/CreatePostScreen';
 import PostDetailScreen from '../screens/PostDetailScreen';
+import MemberProfileScreen, { type MemberProfileParams } from '../screens/MemberProfileScreen';
 import { colors, typography } from '../theme';
 
 export type ForumStackParamList = {
   ForumList: undefined;
   CreatePost: { postId?: string } | undefined;
   PostDetail: { postId: string };
+  MemberProfile: MemberProfileParams;
 };
 
 const Stack = createNativeStackNavigator<ForumStackParamList>();
@@ -29,6 +31,7 @@ export default function ForumStackNavigator() {
         options={({ route }) => ({ title: route.params?.postId ? 'Modifier le sujet' : 'Nouveau sujet' })}
       />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="MemberProfile" component={MemberProfileScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
