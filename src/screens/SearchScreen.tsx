@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { spotsMapHtml, type MapMarker } from '../lib/mapHtml';
 import SpotsMapModal from '../components/SpotsMapModal';
@@ -31,6 +32,8 @@ import type { Spot } from '../types/spot';
 const DISTANCE_STEP_KM = 10;
 const MAX_DISTANCE_KM = 500;
 const DEFAULT_DISTANCE_KM = 150;
+// Dernière distance max choisie, reprise à chaque ouverture de l'app.
+const DISTANCE_STORAGE_KEY = 'search.distanceMaxKm';
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const MONTH_LABELS = [
@@ -122,6 +125,15 @@ export default function SearchScreen() {
   const [distanceMaxKm, setDistanceMaxKm] = useState(DEFAULT_DISTANCE_KM);
 
   useEffect(() => {
+    AsyncStorage.getItem(DISTANCE_STORAGE_KEY)
+      .then((saved) => {
+        const km = Number(saved);
+        if (saved && km > 0) setDistanceMaxKm(km);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!adresseDepart.trim()) {
       setDepartCoords(null);
       return;
@@ -149,9 +161,11 @@ export default function SearchScreen() {
   // Premier palier de 10 km qui couvre bien le spot le plus proche.
   const minDistanceStepKm = Math.max(DISTANCE_STEP_KM, Math.ceil(minDistanceKm / DISTANCE_STEP_KM) * DISTANCE_STEP_KM);
 
+  // Jamais en dessous du spot le plus proche (y compris pour une distance
+  // mémorisée depuis un autre point de départ).
   useEffect(() => {
-    setDistanceMaxKm((prev) => Math.max(prev, minDistanceStepKm));
-  }, [minDistanceStepKm]);
+    if (distanceMaxKm < minDistanceStepKm) setDistanceMaxKm(minDistanceStepKm);
+  }, [minDistanceStepKm, distanceMaxKm]);
 
   const distanceOptions = useMemo(() => {
     const opts: number[] = [];
@@ -583,7 +597,10 @@ export default function SearchScreen() {
             {pickerMode === 'distance' && (
               <Picker
                 selectedValue={distanceMaxKm}
-                onValueChange={(value) => setDistanceMaxKm(Number(value))}
+                onValueChange={(value) => {
+                  setDistanceMaxKm(Number(value));
+                  AsyncStorage.setItem(DISTANCE_STORAGE_KEY, String(value)).catch(() => {});
+                }}
                 itemStyle={styles.wheelItem}
               >
                 {distanceOptions.map((d) => (
