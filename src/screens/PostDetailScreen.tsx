@@ -22,6 +22,7 @@ import { auth } from '../lib/firebase';
 import { getTrips } from '../lib/tripsStorage';
 import { isCurrentUserAdmin } from '../lib/admin';
 import { getMemberPhotos } from '../lib/members';
+import { getBlockedUids } from '../lib/blocking';
 import Avatar from '../components/Avatar';
 import ReportModal, { type ReportContext } from '../components/ReportModal';
 import { spots } from '../data/spots';
@@ -50,6 +51,7 @@ export default function PostDetailScreen({ route }: Props) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [reportContext, setReportContext] = useState<ReportContext | null>(null);
   const [memberPhotos, setMemberPhotos] = useState<Record<string, string>>({});
+  const [blockedUids, setBlockedUids] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,6 +63,7 @@ export default function PostDetailScreen({ route }: Props) {
       getTrips().then(setTrips);
       isCurrentUserAdmin().then(setIsAdmin);
       getMemberPhotos().then(setMemberPhotos).catch(() => {});
+      getBlockedUids().then(setBlockedUids).catch(() => {});
     }, [postId])
   );
 
@@ -211,7 +214,9 @@ export default function PostDetailScreen({ route }: Props) {
             <Text style={styles.postText}>{post.contenu}</Text>
           </View>
 
-          {comments.map((comment) => {
+          {comments
+            .filter((comment) => !comment.auteurUid || !blockedUids.includes(comment.auteurUid))
+            .map((comment) => {
             const trip = comment.carpoolTripId ? trips.find((t) => t.id === comment.carpoolTripId) : null;
             const tripSpot = trip ? spots.find((s) => s.id === trip.spotId) : null;
             const isCommentOwner = comment.auteurUid != null && comment.auteurUid === auth.currentUser?.uid;

@@ -184,7 +184,7 @@ export default function SpotDetailScreen({ route }: Props) {
           style={[styles.favButton, fav && styles.favButtonActive]}
           onPress={() => toggleFavorite(spot.id).then((ids) => setFav(ids.includes(spot.id)))}
         >
-          <Ionicons name={fav ? 'heart' : 'heart-outline'} size={20} color={fav ? colors.accent[500] : colors.blue} />
+          <Ionicons name={fav ? 'star' : 'star-outline'} size={20} color={fav ? colors.accent[500] : colors.blue} />
         </Pressable>
       </View>
     </View>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getMemberProfile } from '../lib/members';
+import { blockUser, getBlockedUids, unblockUser } from '../lib/blocking';
+import { auth } from '../lib/firebase';
 import Avatar from '../components/Avatar';
 import { niveauLabel, type PublicProfile } from '../types/profile';
 
@@ -17,12 +19,39 @@ export default function MemberProfileScreen() {
   const navigation = useNavigation();
   const { uid, prenom } = useRoute().params as MemberProfileParams;
   const [member, setMember] = useState<Partial<PublicProfile> | null | undefined>(undefined);
+  const [blocked, setBlocked] = useState(false);
+  const isMe = uid === auth.currentUser?.uid;
 
   useEffect(() => {
     getMemberProfile(uid)
       .then(setMember)
       .catch(() => setMember(null));
+    getBlockedUids()
+      .then((ids) => setBlocked(ids.includes(uid)))
+      .catch(() => {});
   }, [uid]);
+
+  function handleBlock() {
+    if (blocked) {
+      unblockUser(uid).then(() => setBlocked(false)).catch(() => {});
+      return;
+    }
+    Alert.alert(
+      `Bloquer ${name} ?`,
+      'Ses sujets, réponses et trajets ne te seront plus affichés. Tu pourras le débloquer depuis Réglages → Membres bloqués.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Bloquer',
+          style: 'destructive',
+          onPress: () =>
+            blockUser(uid)
+              .then(() => setBlocked(true))
+              .catch(() => Alert.alert('Erreur', "Le blocage n'a pas pu être enregistré.")),
+        },
+      ]
+    );
+  }
 
   const name = member?.prenom ?? prenom;
   const ailes = member?.materiel?.ailes ?? [];
@@ -80,6 +109,13 @@ export default function MemberProfileScreen() {
             )}
           </View>
         )}
+
+        {!isMe && (
+          <Pressable style={styles.blockButton} onPress={handleBlock}>
+            <Ionicons name={blocked ? 'lock-open-outline' : 'ban-outline'} size={16} color="#C0392B" />
+            <Text style={styles.blockButtonText}>{blocked ? 'Débloquer ce membre' : 'Bloquer ce membre'}</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -113,5 +149,14 @@ const styles = StyleSheet.create({
   emptyText: { ...typography.body, color: colors.neutral.textSecondary },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 9, backgroundColor: '#F0F4F7' },
+  blockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 13,
+    marginTop: 6,
+  },
+  blockButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 13, color: '#C0392B' },
   chipText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.navyBase },
 });

@@ -8,138 +8,234 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Membre banni par un admin : ne peut plus rien publier.
+    // Membre banni par un admin : ne peut plus rien publier ni modifier.
     function isBanned() {
       return exists(/databases/$(database)/documents/bans/$(request.auth.uid));
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // --- Validation des données ---------------------------------------
+    // Les règles ne font pas confiance à l'app : un client modifié peut
+    // écrire n'importe quoi. On borne donc les tailles et on liste les
+    // champs autorisés.
+
+    function shortText(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    function text(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    function optText(data, key, max) {
+      return !(key in data) || data[key] == null || shortText(data[key], max);
+    }
+
+    // Photos : uniquement celles hébergées sur le compte Cloudinary de
+    // ZoneKite (pas d'image arbitraire ni de pixel espion). Les anciennes
+    // uri locales file:// restent acceptées : elles ne s'affichent que sur
+    // l'appareil d'origine.
+    function validPhoto(data, key) {
+      return !(key in data) || data[key] == null
+        || (data[key] is string && data[key].size() <= 300
+          && (data[key].matches('^https://res[.]cloudinary[.]com/qzqkgqnd/.*')
+            || data[key].matches('^file://.*')));
     }
 
     match /admins/{userId} {
       // Lisible par tous les membres : l'app de chacun doit savoir à qui
       // envoyer les alertes de modération.
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if false;
     }
 
     // Bannissements : posés/levés par un admin, lisibles par l'intéressé
     // (écran « compte suspendu ») et par les admins.
     match /bans/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow write: if isAdmin();
     }
 
-    // Annuaire public des membres (prénom, photo) : sert au compteur de
-    // membres du forum et à la liste des membres de l'espace admin.
+    // Annuaire public des membres (prénom, photo, niveau, ville, matériel) :
+    // compteur de membres, fiche membre, espace admin.
     match /members/{userId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['uid', 'prenom', 'photoUri', 'niveau', 'genre', 'ville', 'materiel', 'updatedAt'])
+        && request.resource.data.uid == userId
+        && text(request.resource.data.prenom, 1, 40)
+        && validPhoto(request.resource.data, 'photoUri')
+        && optText(request.resource.data, 'ville', 100)
+        && (!('materiel' in request.resource.data) || request.resource.data.materiel == null
+          || request.resource.data.materiel is map);
+      allow delete: if signedIn() && (request.auth.uid == userId || isAdmin());
     }
 
     // Signalements (manuels ou automatiques) : créés par n'importe quel
     // membre en son nom, lus et traités par les admins uniquement.
     match /reports/{reportId} {
-      allow create: if request.auth != null && request.resource.data.reporterUid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid
+        && optText(request.resource.data, 'excerpt', 600)
+        && optText(request.resource.data, 'reason', 2000)
+        && optText(request.resource.data, 'targetPrenom', 40)
+        && optText(request.resource.data, 'reporterPrenom', 40);
       allow read, delete: if isAdmin();
     }
 
     // Retours / avis envoyés depuis le profil : même principe.
     match /feedback/{feedbackId} {
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && text(request.resource.data.message, 1, 2000)
+        && optText(request.resource.data, 'prenom', 40);
       allow read, delete: if isAdmin();
     }
 
     // Profil utilisateur : lisible/modifiable uniquement par son propriétaire.
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if signedIn() && request.auth.uid == userId;
     }
 
     // Jeton de notification push d'un utilisateur : lisible par tout membre
     // connecté (l'app de l'expéditeur envoie la notification elle-même via
     // l'API Expo, sans serveur), modifiable uniquement par son propriétaire.
     match /pushTokens/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
     }
 
-    // Trajets de covoiturage : visibles par tous les membres connectés,
-    // création libre. Le conducteur (identifié par conducteurUid, absent
-    // sur les trajets créés avant ce champ — ceux-là restent non
-    // modifiables) peut librement éditer ou supprimer son propre trajet,
-    // à condition de ne pas réattribuer conducteurUid à quelqu'un d'autre.
-    // Couvre aussi la mise à jour de placesDispo seule (acceptation d'une
-    // demande de place).
+    // Trajets de covoiturage : visibles par tous les membres connectés.
+    // Seul le conducteur (conducteurUid) crée, modifie ou supprime son
+    // trajet, sans le réattribuer. Les trajets créés avant conducteurUid ne
+    // sont plus modifiables. placesDispo ne descend jamais sous 0 :
+    // impossible d'accepter plus de passagers que de places.
+    function validTrip(data) {
+      return data.keys().hasOnly(['id', 'spotId', 'conducteurUid', 'conducteurPrenom', 'conducteurPhotoUri',
+          'conducteurGenre', 'date', 'heureDepart', 'heureRetourEstimee', 'adresseDepart',
+          'adresseDepartDetail', 'vehicule', 'placesDispo', 'placesTotal', 'materielMax', 'dejaABord'])
+        && text(data.spotId, 1, 80)
+        && text(data.conducteurPrenom, 1, 40)
+        && validPhoto(data, 'conducteurPhotoUri')
+        && text(data.date, 10, 10)
+        && text(data.heureDepart, 1, 10)
+        && optText(data, 'heureRetourEstimee', 10)
+        && text(data.adresseDepart, 1, 200)
+        && optText(data, 'adresseDepartDetail', 200)
+        && optText(data, 'vehicule', 200)
+        && optText(data, 'materielMax', 200)
+        && data.placesDispo is int && data.placesDispo >= 0 && data.placesDispo <= 8
+        && (!('placesTotal' in data) || (data.placesTotal is int
+          && data.placesTotal >= data.placesDispo && data.placesTotal <= 8));
+    }
+
     match /trips/{tripId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
+      allow read: if signedIn();
+      allow create: if signedIn()
         && request.resource.data.conducteurUid == request.auth.uid
+        && request.resource.data.id == tripId
+        && validTrip(request.resource.data)
         && !isBanned();
-      allow update: if request.auth != null
+      allow update: if signedIn()
         && resource.data.conducteurUid == request.auth.uid
-        && request.resource.data.conducteurUid == resource.data.conducteurUid;
-      allow delete: if request.auth != null && (resource.data.conducteurUid == request.auth.uid || isAdmin());
+        && request.resource.data.conducteurUid == resource.data.conducteurUid
+        && validTrip(request.resource.data)
+        && !isBanned();
+      allow delete: if signedIn() && (resource.data.conducteurUid == request.auth.uid || isAdmin());
     }
 
     // Sujets de forum : visibles par tous les membres connectés, créés
     // uniquement par leur auteur (auteurUid). Le propriétaire peut éditer
-    // titre/contenu/tag ou supprimer son post, sans le réattribuer à
-    // quelqu'un d'autre. N'importe quel membre peut en revanche faire
-    // avancer commentCount d'une unité en postant une réponse (voir la
-    // sous-collection comments ci-dessous, seule source des commentaires
-    // pour les nouveaux posts).
+    // titre/contenu/tag ou supprimer son post. N'importe quel membre peut
+    // en revanche faire avancer commentCount d'une unité en postant (ou en
+    // supprimant) une réponse.
+    function validPostText(data) {
+      return text(data.titre, 1, 120)
+        && text(data.contenu, 1, 5000)
+        && data.tag in ['SESSIONS', 'MATÉRIEL', 'SPOTS'];
+    }
+
     match /forumPosts/{postId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['id', 'auteurUid', 'auteurPrenom', 'auteurPhotoUri',
+          'titre', 'contenu', 'date', 'tag', 'commentCount'])
         && request.resource.data.auteurUid == request.auth.uid
+        && request.resource.data.id == postId
+        && text(request.resource.data.auteurPrenom, 1, 40)
+        && validPhoto(request.resource.data, 'auteurPhotoUri')
+        && text(request.resource.data.date, 1, 40)
+        && validPostText(request.resource.data)
+        && request.resource.data.commentCount == 0
         && !isBanned();
-      allow update: if request.auth != null
+      allow update: if signedIn()
         && (
           (resource.data.auteurUid == request.auth.uid
-            && request.resource.data.auteurUid == resource.data.auteurUid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['titre', 'contenu', 'tag'])
+            && validPostText(request.resource.data)
+            && !isBanned())
           || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
             // .get(key, 0) : les posts créés avant l'introduction de
             // commentCount n'ont pas ce champ, on part de 0 pour eux.
-            // -1 : suppression d'une réponse (par son auteur ou un admin).
             && (request.resource.data.commentCount == resource.data.get('commentCount', 0) + 1
-              || request.resource.data.commentCount == resource.data.get('commentCount', 0) - 1))
+              || request.resource.data.commentCount == resource.data.get('commentCount', 0) - 1)
+            && request.resource.data.commentCount >= 0)
         );
-      allow delete: if request.auth != null && (resource.data.auteurUid == request.auth.uid || isAdmin());
+      allow delete: if signedIn() && (resource.data.auteurUid == request.auth.uid || isAdmin());
 
       // Réponses à un sujet : lisibles par tous les membres connectés,
-      // créées par leur auteur pour lui-même, éditées/supprimées
-      // uniquement par ce même auteur (auteurUid), sans réattribution.
+      // créées par leur auteur pour lui-même, éditées (texte seulement) ou
+      // supprimées par ce même auteur.
       match /comments/{commentId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['id', 'auteurUid', 'auteurPrenom', 'auteurPhotoUri',
+            'contenu', 'date', 'carpoolTripId'])
           && request.resource.data.auteurUid == request.auth.uid
+          && request.resource.data.id == commentId
+          && text(request.resource.data.auteurPrenom, 1, 40)
+          && validPhoto(request.resource.data, 'auteurPhotoUri')
+          && text(request.resource.data.contenu, 1, 2000)
+          && text(request.resource.data.date, 1, 40)
+          && optText(request.resource.data, 'carpoolTripId', 80)
           && !isBanned();
-        allow update: if request.auth != null
+        allow update: if signedIn()
           && resource.data.auteurUid == request.auth.uid
-          && request.resource.data.auteurUid == resource.data.auteurUid;
-        allow delete: if request.auth != null && (resource.data.auteurUid == request.auth.uid || isAdmin());
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['contenu'])
+          && text(request.resource.data.contenu, 1, 2000)
+          && !isBanned();
+        allow delete: if signedIn() && (resource.data.auteurUid == request.auth.uid || isAdmin());
       }
     }
 
     // Demandes de place en covoiturage : lisibles par tous les membres
-    // connectés (le conducteur doit voir les demandes reçues sur son
-    // trajet), créées uniquement par le demandeur pour lui-même et
-    // toujours au statut initial "pending". Seul le conducteur du trajet
-    // concerné (comparé via conducteurUid sur le trajet) peut faire passer
-    // une demande à "accepted" ou "refused", et uniquement ce champ-là —
-    // un trajet créé avant l'introduction de conducteurUid ne peut donc
-    // plus recevoir de réponse (dégradation sûre plutôt qu'ouverte).
+    // connectés (le conducteur doit voir les demandes reçues). Une seule
+    // demande par passager et par trajet (id = trajet_passager), au statut
+    // initial "pending", uniquement sur un trajet qui a encore de la place
+    // et dont on n'est pas le conducteur. Seul le conducteur fait passer la
+    // demande à "accepted" ou "refused", et uniquement ce champ-là.
     match /rideRequests/{requestId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['id', 'tripId', 'passagerUid', 'passagerPrenom',
+          'passagerPhotoUri', 'status', 'date'])
         && request.resource.data.passagerUid == request.auth.uid
+        && requestId == request.resource.data.tripId + '_' + request.auth.uid
+        && request.resource.data.id == requestId
         && request.resource.data.status == 'pending'
+        && text(request.resource.data.passagerPrenom, 1, 40)
+        && validPhoto(request.resource.data, 'passagerPhotoUri')
+        && get(/databases/$(database)/documents/trips/$(request.resource.data.tripId)).data.placesDispo > 0
+        && get(/databases/$(database)/documents/trips/$(request.resource.data.tripId)).data.get('conducteurUid', null) != request.auth.uid
         && !isBanned();
-      allow update: if request.auth != null
+      allow update: if signedIn()
         && get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.conducteurUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['accepted', 'refused'];
       // Le demandeur peut supprimer sa propre demande (ex. suppression de
       // compte).
-      allow delete: if request.auth != null && (resource.data.passagerUid == request.auth.uid || isAdmin());
+      allow delete: if signedIn() && (resource.data.passagerUid == request.auth.uid || isAdmin());
     }
   }
 }

@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { Profile } from '../types/profile';
 import type { RideRequest, RideRequestStatus } from '../types/rideRequest';
@@ -64,9 +64,12 @@ async function setRequestStatus(requestId: string, status: RideRequestStatus): P
 }
 
 export async function acceptRequest(request: RideRequest, trip: Trajet): Promise<void> {
-  await setRequestStatus(request.id, 'accepted');
-  // Une place de moins disponible sur le trajet.
-  await updateDoc(doc(db, 'trips', request.tripId), { placesDispo: increment(-1) });
+  // Les deux écritures passent ensemble ou pas du tout : les règles refusent
+  // un placesDispo négatif, la demande reste alors en attente.
+  const batch = writeBatch(db);
+  batch.update(doc(requestsCollection, request.id), { status: 'accepted' });
+  batch.update(doc(db, 'trips', request.tripId), { placesDispo: increment(-1) });
+  await batch.commit();
   await sendPushToUser(
     request.passagerUid,
     'Demande acceptée',

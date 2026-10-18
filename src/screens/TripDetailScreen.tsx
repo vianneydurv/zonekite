@@ -9,6 +9,7 @@ import { colors, typography } from '../theme';
 import { deleteTrip, getTrips } from '../lib/tripsStorage';
 import { acceptRequest, getMyRequests, getRequestsForTrips, refuseRequest, requestSeat } from '../lib/rideRequests';
 import { getProfile } from '../lib/profileStorage';
+import { auth } from '../lib/firebase';
 import type { Trajet } from '../types/trajet';
 import { isRemotePhoto } from '../lib/cloudinary';
 import { conducteurLabel, type Profile } from '../types/profile';
@@ -47,10 +48,15 @@ export default function TripDetailScreen({ route, navigation }: Props) {
 
   const spot = spots.find((s) => s.id === trip.spotId);
   const placesTotal = trip.placesTotal ?? trip.placesDispo;
-  const isDriver = profile != null && trip.conducteurPrenom === profile.prenom;
+  // Comparé par uid (deux membres peuvent porter le même prénom) ; les
+  // trajets antérieurs à conducteurUid retombent sur le prénom.
+  const isDriver = trip.conducteurUid
+    ? trip.conducteurUid === auth.currentUser?.uid
+    : profile != null && trip.conducteurPrenom === profile.prenom;
+  const isFull = trip.placesDispo <= 0;
 
   async function handleRequest() {
-    if (myRequest) return;
+    if (myRequest || isFull) return;
     await requestSeat(trip!, profile);
     setMyRequest({
       id: `${trip!.id}_pending`,
@@ -64,7 +70,13 @@ export default function TripDetailScreen({ route, navigation }: Props) {
   }
 
   async function handleAccept(request: RideRequest) {
-    await acceptRequest(request, trip!);
+    if (trip!.placesDispo <= 0) return;
+    try {
+      await acceptRequest(request, trip!);
+    } catch {
+      Alert.alert('Impossible d’accepter', 'Il ne reste plus de place sur ce trajet.');
+      return;
+    }
     setRequests((rs) => rs.map((r) => (r.id === request.id ? { ...r, status: 'accepted' } : r)));
     setTrip((t) => (t ? { ...t, placesDispo: t.placesDispo - 1 } : t));
   }
@@ -212,9 +224,12 @@ export default function TripDetailScreen({ route, navigation }: Props) {
                         <Pressable style={styles.refuseButton} onPress={() => handleRefuse(req)}>
                           <Text style={styles.refuseButtonText}>Refuser</Text>
                         </Pressable>
-                        <Pressable style={styles.acceptButton} onPress={() => handleAccept(req)}>
-                          <Text style={styles.acceptButtonText}>Accepter</Text>
-                        </Pressable>
+                        {/* Plus de place : on ne peut que refuser. */}
+                        {trip.placesDispo > 0 && (
+                          <Pressable style={styles.acceptButton} onPress={() => handleAccept(req)}>
+                            <Text style={styles.acceptButtonText}>Accepter</Text>
+                          </Pressable>
+                        )}
                       </View>
                     ) : (
                       <View style={req.status === 'accepted' ? styles.statusBadgeGood : styles.statusBadge}>
@@ -268,18 +283,20 @@ export default function TripDetailScreen({ route, navigation }: Props) {
       ) : (
         <View style={styles.footer}>
           <Pressable
-            style={[styles.cta, myRequest && styles.ctaDisabled]}
+            style={[styles.cta, (myRequest || isFull) && styles.ctaDisabled]}
             onPress={handleRequest}
-            disabled={myRequest != null}
+            disabled={myRequest != null || isFull}
           >
-            <Text style={[styles.ctaText, myRequest && styles.ctaTextDisabled]}>
+            <Text style={[styles.ctaText, (myRequest || isFull) && styles.ctaTextDisabled]}>
               {myRequest?.status === 'accepted'
                 ? 'PLACE CONFIRMÉE'
                 : myRequest?.status === 'refused'
                   ? 'DEMANDE REFUSÉE'
                   : myRequest
                     ? 'DEMANDE EN ATTENTE'
-                    : 'DEMANDER UNE PLACE'}
+                    : isFull
+                      ? 'TRAJET COMPLET'
+                      : 'DEMANDER UNE PLACE'}
             </Text>
           </Pressable>
         </View>

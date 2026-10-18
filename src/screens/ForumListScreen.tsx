@@ -7,6 +7,7 @@ import type { ForumStackParamList } from '../navigation/ForumStackNavigator';
 import { colors, typography } from '../theme';
 import { getPosts } from '../lib/forumStorage';
 import { getMemberCount } from '../lib/members';
+import { getBlockedUids } from '../lib/blocking';
 import type { ForumPost, ForumTag } from '../types/forum';
 import PostCard from '../components/PostCard';
 
@@ -19,16 +20,20 @@ export default function ForumListScreen({ navigation }: Props) {
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [filter, setFilter] = useState<'TOUT' | ForumTag>('TOUT');
   const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [blockedUids, setBlockedUids] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       getPosts().then(setPosts);
+      getBlockedUids().then(setBlockedUids).catch(() => {});
       // Recompté à chaque retour sur l'onglet : suit les nouvelles inscriptions.
       getMemberCount().then(setMemberCount).catch(() => {});
     }, [])
   );
 
-  const visiblePosts = filter === 'TOUT' ? posts : posts.filter((p) => p.tag === filter);
+  // Les sujets des membres bloqués ne sont pas affichés.
+  const unblockedPosts = posts.filter((p) => !p.auteurUid || !blockedUids.includes(p.auteurUid));
+  const visiblePosts = filter === 'TOUT' ? unblockedPosts : unblockedPosts.filter((p) => p.tag === filter);
 
   return (
     <SafeAreaView style={styles.safeArea}>

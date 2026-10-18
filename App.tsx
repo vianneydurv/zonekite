@@ -18,6 +18,8 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import LoadingScreen from './src/screens/LoadingScreen';
 import BannedScreen from './src/screens/BannedScreen';
+import TermsScreen from './src/screens/TermsScreen';
+import { CGU_VERSION } from './src/lib/terms';
 import { subscribeToAuth } from './src/lib/auth';
 import { getProfile } from './src/lib/profileStorage';
 import { isRemotePhoto } from './src/lib/cloudinary';
@@ -99,6 +101,10 @@ export default function App() {
     );
   }, [stillLoading, fontsLoaded, loadingOpacity]);
 
+  // Le formulaire de profil ne renvoie que ses propres champs : on garde le
+  // reste (conditions acceptées, favoris, membres bloqués).
+  const completeProfile = (p: Profile) => setProfile((prev) => ({ ...(prev ?? {}), ...p }));
+
   if (!fontsLoaded) return null;
 
   return (
@@ -109,12 +115,16 @@ export default function App() {
       ) : banned ? (
         <BannedScreen />
       ) : profile === null ? (
-        <OnboardingScreen onComplete={setProfile} />
+        <OnboardingScreen onComplete={completeProfile} />
       ) : profile && (!isRemotePhoto(profile.photoUri) || !profile.genre) ? (
         // Profil incomplet, créé avant l'ajout d'un champ désormais requis :
         // photo encore locale (invisible des autres, avant Cloudinary) ou
         // genre manquant. On redemande de compléter, le reste est pré-rempli.
-        <OnboardingScreen initialProfile={profile} onComplete={setProfile} />
+        <OnboardingScreen initialProfile={profile} onComplete={completeProfile} />
+      ) : profile && (profile.cguVersion ?? 0) < CGU_VERSION ? (
+        // Conditions d'utilisation à accepter (nouveau membre, ou nouvelle
+        // version) avant d'accéder au forum et au covoit.
+        <TermsScreen onAccepted={() => setProfile({ ...profile, cguVersion: CGU_VERSION })} />
       ) : (
         <RootNavigator />
       )}

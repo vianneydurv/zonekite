@@ -37,6 +37,13 @@ export interface Profile {
   // pas par saveProfile. Les demandes de covoiturage vivent dans la
   // collection rideRequests (voir rideRequests.ts), pas sur le profil.
   favoriteSpotIds?: string[];
+  // Version des conditions d'utilisation acceptée (voir terms.ts) : absente
+  // ou inférieure à la version en cours = l'app redemande l'acceptation.
+  cguVersion?: number;
+  cguAcceptedAt?: string;
+  // Membres bloqués : leurs sujets, réponses et trajets sont masqués. Géré
+  // par blocking.ts, privé comme le reste du profil.
+  blockedUids?: string[];
 }
 
 // Partie du profil visible par les autres membres (fiche membre du forum et

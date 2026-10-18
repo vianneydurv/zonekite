@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CarpoolStackParamList } from '../navigation/CarpoolStackNavigator';
 import { colors, typography } from '../theme';
 import { getTrips } from '../lib/tripsStorage';
+import { auth } from '../lib/firebase';
 import { getProfile } from '../lib/profileStorage';
 import { localDateIso } from '../lib/matching';
 import { spots } from '../data/spots';
@@ -33,6 +34,7 @@ function dayChipLabel(d: Date) {
 export default function CarpoolListScreen({ navigation }: Props) {
   const [trips, setTrips] = useState<Trajet[]>([]);
   const [prenom, setPrenom] = useState<string | null>(null);
+  const [blockedUids, setBlockedUids] = useState<string[]>([]);
   const [mode, setMode] = useState<'seeking' | 'offering'>('seeking');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
@@ -43,7 +45,10 @@ export default function CarpoolListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       getTrips().then(setTrips);
-      getProfile().then((p) => setPrenom(p?.prenom ?? null));
+      getProfile().then((p) => {
+        setPrenom(p?.prenom ?? null);
+        setBlockedUids(p?.blockedUids ?? []);
+      });
     }, [])
   );
 
@@ -53,11 +58,18 @@ export default function CarpoolListScreen({ navigation }: Props) {
   const selectedSpot = spots.find((s) => s.id === selectedSpotId);
   const filteredSpots = spots.filter((s) => s.nom.toLowerCase().includes(spotFilterText.toLowerCase()));
 
+  // Comparé par uid : deux membres peuvent avoir le même prénom. Les trajets
+  // créés avant conducteurUid retombent sur la comparaison par prénom.
+  const myUid = auth.currentUser?.uid;
+  const isMine = (t: Trajet) => (t.conducteurUid ? t.conducteurUid === myUid : t.conducteurPrenom === prenom);
+
   const visibleTrips = trips
     .filter((t) => t.date >= todayIso)
     .filter((t) => (selectedDateIso ? t.date === selectedDateIso : true))
     .filter((t) => (selectedSpotId ? t.spotId === selectedSpotId : true))
-    .filter((t) => (mode === 'offering' ? t.conducteurPrenom === prenom : t.conducteurPrenom !== prenom));
+    // Trajets des membres bloqués masqués.
+    .filter((t) => !t.conducteurUid || !blockedUids.includes(t.conducteurUid))
+    .filter((t) => (mode === 'offering' ? isMine(t) : !isMine(t)));
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import {
   Alert,
   Image,
+  Linking,
   Modal,
   Pressable,
   SafeAreaView,
@@ -18,9 +19,8 @@ import { getProfile } from '../lib/profileStorage';
 import { authErrorMessage, deleteCurrentUser, reauthenticate, signOut } from '../lib/auth';
 import { deleteMyData } from '../lib/accountDeletion';
 import { auth } from '../lib/firebase';
-import { getTrips } from '../lib/tripsStorage';
+import { getMyPastTrips, getTrips } from '../lib/tripsStorage';
 import { getMyRequests } from '../lib/rideRequests';
-import { localDateIso } from '../lib/matching';
 import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
 import { conducteurLabel, niveauLabel, passagerLabel, type Profile } from '../types/profile';
@@ -30,6 +30,8 @@ import OnboardingScreen from './OnboardingScreen';
 import { isCurrentUserAdmin } from '../lib/admin';
 import { sendFeedback } from '../lib/moderation';
 import ReportModal, { type ReportContext } from '../components/ReportModal';
+import BlockedMembersModal from '../components/BlockedMembersModal';
+import { CGU_URL } from '../lib/terms';
 
 const NEXT_RIDE_STATUS_LABELS: Record<RideRequestStatus, string> = {
   pending: 'EN ATTENTE',
@@ -57,6 +59,7 @@ export default function ProfileScreen() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
@@ -68,12 +71,11 @@ export default function ProfileScreen() {
       getFavoriteIds().then((ids) => setFavoriteCount(ids.length));
       isCurrentUserAdmin().then(setIsAdmin);
 
-      Promise.all([getTrips(), getMyRequests(), getProfile()]).then(([allTrips, requests, p]) => {
+      const uid = auth.currentUser?.uid;
+      Promise.all([getTrips(), getMyRequests()]).then(async ([trips, requests]) => {
         setMyRequests(requests);
-        const todayIso = localDateIso(new Date());
-        const trips = allTrips.filter((t) => t.date >= todayIso);
         const requestedIds = requests.map((r) => r.tripId);
-        const mine = trips.filter((t) => t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id));
+        const mine = trips.filter((t) => t.conducteurUid === uid || requestedIds.includes(t.id));
         setCarpoolCount(mine.length);
 
         const upcoming = trips
@@ -87,10 +89,7 @@ export default function ProfileScreen() {
           setNextRide(null);
         }
 
-        const past = allTrips
-          .filter((t) => t.date < todayIso && (t.conducteurPrenom === p?.prenom || requestedIds.includes(t.id)))
-          .sort((a, b) => b.date.localeCompare(a.date));
-        setPastTrips(past);
+        if (uid) setPastTrips(await getMyPastTrips(uid, requestedIds).catch(() => []));
       });
     }, [])
   );
@@ -267,7 +266,9 @@ export default function ProfileScreen() {
             <View style={{ gap: 10 }}>
               {pastTrips.map((trip) => {
                 const spot = spots.find((s) => s.id === trip.spotId);
-                const isDriver = trip.conducteurPrenom === profile.prenom;
+                const isDriver = trip.conducteurUid
+                  ? trip.conducteurUid === auth.currentUser?.uid
+                  : trip.conducteurPrenom === profile.prenom;
                 const request = !isDriver ? myRequests.find((r) => r.tripId === trip.id) : null;
                 return (
                   <Pressable
@@ -346,6 +347,16 @@ export default function ProfileScreen() {
                 sub="Signaler un membre ou une conversation"
                 onPress={() => fromSettings(() => setHelpReport({ targetType: 'other' }))}
               />
+              <MenuRow
+                icon="ban-outline"
+                label="Membres bloqués"
+                onPress={() => fromSettings(() => setShowBlocked(true))}
+              />
+              <MenuRow
+                icon="document-text-outline"
+                label="Conditions d'utilisation"
+                onPress={() => fromSettings(() => Linking.openURL(CGU_URL))}
+              />
               {isAdmin && (
                 <MenuRow
                   icon="shield-checkmark-outline"
@@ -368,6 +379,8 @@ export default function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <BlockedMembersModal visible={showBlocked} onClose={() => setShowBlocked(false)} />
 
       <ReportModal
         context={helpReport}

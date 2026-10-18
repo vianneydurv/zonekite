@@ -22,6 +22,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography } from '../theme';
 import { getProfile } from '../lib/profileStorage';
 import { getTrips } from '../lib/tripsStorage';
+import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
 import { distanceKm, geocodeAddress, type Coords } from '../lib/geocoding';
 import { spots } from '../data/spots';
@@ -108,6 +109,7 @@ export default function SearchScreen() {
   const [showDepartEditor, setShowDepartEditor] = useState(false);
   const [searched, setSearched] = useState(false);
   const [carpoolCounts, setCarpoolCounts] = useState<Record<string, number>>({});
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   useEffect(() => {
     getProfile().then((profile) => {
@@ -166,6 +168,9 @@ export default function SearchScreen() {
         });
         setCarpoolCounts(counts);
       });
+      // Relu à chaque retour sur l'onglet : suit les favoris changés depuis
+      // une fiche spot.
+      getFavoriteIds().then(setFavoriteIds).catch(() => {});
     }, [])
   );
 
@@ -240,6 +245,17 @@ export default function SearchScreen() {
       })
     ).then((list) => setFullMapMarkers(list.filter((m): m is MapMarker => m != null)));
   }
+
+  // Mise à jour immédiate de l'étoile, recalée sur Firestore ensuite.
+  function handleToggleFavorite(spotId: string) {
+    setFavoriteIds((ids) => (ids.includes(spotId) ? ids.filter((id) => id !== spotId) : [...ids, spotId]));
+    toggleFavorite(spotId)
+      .then(setFavoriteIds)
+      .catch(() => getFavoriteIds().then(setFavoriteIds).catch(() => {}));
+  }
+
+  // Ordre de la liste des spots (régions du nord au sud), pas d'ajout.
+  const favoriteSpots = spots.filter((spot) => favoriteIds.includes(spot.id));
 
   function openSpot(spot: Spot) {
     navigation.navigate('SpotDetail', {
@@ -422,6 +438,36 @@ export default function SearchScreen() {
           <Pressable onPress={() => Alert.alert('Bientôt disponible', 'Pas encore de recherches enregistrées.')}>
             <Text style={styles.savedSearchesLink}>Mes recherches enregistrées</Text>
           </Pressable>
+
+          <View style={styles.favoritesSection}>
+            <Text style={styles.favoritesTitle}>MES SPOTS FAVORIS</Text>
+            {favoriteSpots.length === 0 ? (
+              <Text style={styles.favoritesEmpty}>
+                Touche l'étoile d'un spot dans les résultats de recherche pour le retrouver ici.
+              </Text>
+            ) : (
+              <View style={styles.favoritesList}>
+                {favoriteSpots.map((spot, i) => (
+                  <Pressable
+                    key={spot.id}
+                    style={[styles.favoriteRow, i > 0 && styles.favoriteRowBorder]}
+                    // Sans date ni créneau : la fiche s'ouvre sur les prévisions du
+                    // jour, indépendamment du formulaire de recherche.
+                    onPress={() => navigation.navigate('SpotDetail', { spot })}
+                  >
+                    <Pressable hitSlop={10} onPress={() => handleToggleFavorite(spot.id)}>
+                      <Ionicons name="star" size={18} color={colors.accent[500]} />
+                    </Pressable>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.favoriteName} numberOfLines={1}>{spot.nom}</Text>
+                      <Text style={styles.favoriteRegion}>{spot.region}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.navy(0.3)} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
       ) : (
         <View style={styles.resultsContainer}>
@@ -493,6 +539,8 @@ export default function SearchScreen() {
                   tideLabel={item.condition.tideLabel}
                   readingHour={item.condition.readingHour}
                   carpoolCount={carpoolCounts[item.spot.id] ?? 0}
+                  isFavorite={favoriteIds.includes(item.spot.id)}
+                  onToggleFavorite={() => handleToggleFavorite(item.spot.id)}
                   onPress={() =>
                     navigation.navigate('SpotDetail', {
                       spot: item.spot,
@@ -591,6 +639,8 @@ function ResultCard({
   tideLabel,
   readingHour,
   carpoolCount,
+  isFavorite,
+  onToggleFavorite,
   onPress,
   onCarpoolPress,
 }: {
@@ -603,6 +653,8 @@ function ResultCard({
   tideLabel: string;
   readingHour: string;
   carpoolCount: number;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onPress: () => void;
   onCarpoolPress: () => void;
 }) {
@@ -610,7 +662,16 @@ function ResultCard({
     <Pressable style={resultStyles.card} onPress={onPress}>
       <View style={[resultStyles.banner, { backgroundColor: color }]}>
         <Text style={resultStyles.bannerVerdict}>{verdict}</Text>
-        <Text style={resultStyles.bannerWindow}>{window}</Text>
+        <View style={resultStyles.bannerRight}>
+          <Text style={resultStyles.bannerWindow}>{window}</Text>
+          <Pressable
+            hitSlop={10}
+            onPress={onToggleFavorite}
+            accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          >
+            <Ionicons name={isFavorite ? 'star' : 'star-outline'} size={17} color={colors.neutral.white} />
+          </Pressable>
+        </View>
       </View>
       <View style={resultStyles.body}>
         <View style={resultStyles.bodyTopRow}>
@@ -651,6 +712,7 @@ const resultStyles = StyleSheet.create({
   card: { backgroundColor: colors.neutral.white, borderRadius: 14, overflow: 'hidden', marginBottom: 10 },
   banner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 13, paddingVertical: 8 },
   bannerVerdict: { fontFamily: typography.h3.fontFamily, fontSize: 11, color: colors.neutral.white, letterSpacing: 1.1 },
+  bannerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   bannerWindow: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.neutral.white },
   body: { padding: 13 },
   bodyTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -767,6 +829,19 @@ const styles = StyleSheet.create({
   linkText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.blue },
   fieldValuePlaceholder: { ...typography.body, color: colors.neutral.textSecondary, marginTop: 4 },
   hint: { ...typography.caption, color: colors.neutral.textSecondary, marginTop: 6, marginLeft: 2 },
+  favoritesSection: { marginTop: 26 },
+  favoritesTitle: { fontFamily: typography.h3.fontFamily, fontSize: 10.5, color: colors.navy(0.55), letterSpacing: 1, marginBottom: 10 },
+  favoritesEmpty: { ...typography.body, color: colors.neutral.textSecondary },
+  favoritesList: {
+    backgroundColor: colors.neutral.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.neutral.border,
+  },
+  favoriteRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  favoriteRowBorder: { borderTopWidth: 1, borderTopColor: colors.navy(0.07) },
+  favoriteName: { fontFamily: typography.h3.fontFamily, fontSize: 14, color: colors.navyBase },
+  favoriteRegion: { ...typography.body, fontSize: 11.5, color: colors.navy(0.5), marginTop: 1 },
   savedSearchesLink: { ...typography.body, color: colors.blue, textAlign: 'center', marginTop: 16, fontFamily: typography.h3.fontFamily },
   searchButton: {
     backgroundColor: colors.accent[500],
