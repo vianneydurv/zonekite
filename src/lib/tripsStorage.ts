@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, orderBy, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Trajet } from '../types/trajet';
 import type { Profile } from '../types/profile';
@@ -10,24 +10,10 @@ const tripsCollection = collection(db, 'trips');
 export async function getTrips(): Promise<Trajet[]> {
   // Un trajet dont la date de départ est passée n'a plus lieu d'apparaître
   // dans les listes/compteurs de covoiturage. Filtré côté serveur : les
-  // trajets passés restent en base (historique) sans être téléchargés.
+  // trajets passés restent en base sans être téléchargés.
   const todayIso = localDateIso(new Date());
   const snap = await getDocs(query(tripsCollection, where('date', '>=', todayIso), orderBy('date')));
   return snap.docs.map((d) => d.data() as Trajet);
-}
-
-// Historique du profil : trajets passés publiés par le membre ou sur
-// lesquels il a demandé une place.
-export async function getMyPastTrips(uid: string, requestedTripIds: string[]): Promise<Trajet[]> {
-  const todayIso = localDateIso(new Date());
-  const [driven, ...requested] = await Promise.all([
-    getDocs(query(tripsCollection, where('conducteurUid', '==', uid))),
-    ...requestedTripIds.map((id) => getDoc(doc(tripsCollection, id))),
-  ]);
-  const byId = new Map<string, Trajet>();
-  driven.docs.forEach((d) => byId.set(d.id, d.data() as Trajet));
-  requested.forEach((d) => d.exists() && byId.set(d.id, d.data() as Trajet));
-  return [...byId.values()].filter((t) => t.date < todayIso).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // Sert à la fois pour publier un nouveau trajet et pour enregistrer les

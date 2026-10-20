@@ -19,13 +19,13 @@ import { getProfile } from '../lib/profileStorage';
 import { authErrorMessage, deleteCurrentUser, reauthenticate, signOut } from '../lib/auth';
 import { deleteMyData } from '../lib/accountDeletion';
 import { auth } from '../lib/firebase';
-import { getMyPastTrips, getTrips } from '../lib/tripsStorage';
+import { getTrips } from '../lib/tripsStorage';
 import { getMyRequests } from '../lib/rideRequests';
 import { getFavoriteIds } from '../lib/favorites';
 import { spots } from '../data/spots';
-import { conducteurLabel, niveauLabel, passagerLabel, type Profile } from '../types/profile';
+import { niveauLabel, type Profile } from '../types/profile';
 import type { Trajet } from '../types/trajet';
-import type { RideRequest, RideRequestStatus } from '../types/rideRequest';
+import type { RideRequestStatus } from '../types/rideRequest';
 import OnboardingScreen from './OnboardingScreen';
 import { isCurrentUserAdmin } from '../lib/admin';
 import { sendFeedback } from '../lib/moderation';
@@ -52,8 +52,6 @@ export default function ProfileScreen() {
   const [carpoolCount, setCarpoolCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [nextRide, setNextRide] = useState<NextRide | null>(null);
-  const [pastTrips, setPastTrips] = useState<Trajet[]>([]);
-  const [myRequests, setMyRequests] = useState<RideRequest[]>([]);
   const [editing, setEditing] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -73,7 +71,6 @@ export default function ProfileScreen() {
 
       const uid = auth.currentUser?.uid;
       Promise.all([getTrips(), getMyRequests()]).then(async ([trips, requests]) => {
-        setMyRequests(requests);
         const requestedIds = requests.map((r) => r.tripId);
         const mine = trips.filter((t) => t.conducteurUid === uid || requestedIds.includes(t.id));
         setCarpoolCount(mine.length);
@@ -89,7 +86,6 @@ export default function ProfileScreen() {
           setNextRide(null);
         }
 
-        if (uid) setPastTrips(await getMyPastTrips(uid, requestedIds).catch(() => []));
       });
     }, [])
   );
@@ -258,54 +254,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardEyebrow}>HISTORIQUE</Text>
-          {pastTrips.length === 0 ? (
-            <Text style={styles.emptyText}>Aucun trajet passé pour l'instant.</Text>
-          ) : (
-            <View style={{ gap: 10 }}>
-              {pastTrips.map((trip) => {
-                const spot = spots.find((s) => s.id === trip.spotId);
-                const isDriver = trip.conducteurUid
-                  ? trip.conducteurUid === auth.currentUser?.uid
-                  : trip.conducteurPrenom === profile.prenom;
-                const request = !isDriver ? myRequests.find((r) => r.tripId === trip.id) : null;
-                return (
-                  <Pressable
-                    key={trip.id}
-                    style={styles.historyRow}
-                    onPress={() => navigation.navigate('Carpool', { screen: 'TripDetail', params: { tripId: trip.id } })}
-                  >
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.historyTitle} numberOfLines={1}>
-                        {spot?.nom ?? 'Spot inconnu'}
-                      </Text>
-                      <Text style={styles.historySub}>
-                        {new Date(trip.date + 'T00:00:00').toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                        })}
-                        {' · '}
-                        {isDriver
-                          ? conducteurLabel(profile.genre)
-                          : `${passagerLabel(profile.genre)} chez ${trip.conducteurPrenom}`}
-                      </Text>
-                    </View>
-                    {request && (
-                      <View style={request.status === 'accepted' ? styles.statusBadgeGood : styles.statusBadge}>
-                        <Text style={request.status === 'accepted' ? styles.statusBadgeGoodText : styles.statusBadgeText}>
-                          {NEXT_RIDE_STATUS_LABELS[request.status]}
-                        </Text>
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        {/* Détouré et décollé de l'historique : c'est un message à l'équipe,
+        {/* Détouré du reste du profil : c'est un message à l'équipe,
             pas une partie du profil. */}
         <View style={[styles.card, styles.feedbackCard]}>
           <Text style={styles.cardEyebrow}>TON AVIS COMPTE</Text>
@@ -508,9 +457,6 @@ const styles = StyleSheet.create({
   chip: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 9, backgroundColor: '#F0F4F7' },
   chipText: { fontFamily: typography.h3.fontFamily, fontSize: 12, color: colors.navyBase },
   nextRideRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  historyTitle: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.navyBase },
-  historySub: { ...typography.body, color: colors.navy(0.5), marginTop: 2 },
   nextRideTitle: { fontFamily: typography.h3.fontFamily, fontSize: 14.5, color: colors.navyBase },
   nextRideSub: { ...typography.body, color: colors.navy(0.5), marginTop: 3 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FDF3E3' },
