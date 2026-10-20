@@ -228,8 +228,11 @@ export default function SearchScreen() {
     () =>
       spotsMapHtml(
         results.map(({ spot, condition }) => ({ ...spotPoint(spot), color: condition.color })),
-        { zoom: RESULT_SPOT_ZOOM }
+        { zoom: RESULT_SPOT_ZOOM, origin: departCoords }
       ),
+    // departCoords volontairement absent : l'animation ne se rejoue qu'à
+    // chaque nouvelle liste de résultats (nouvelle recherche).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [results]
   );
 
