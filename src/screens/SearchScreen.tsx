@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Alert,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -228,13 +229,45 @@ export default function SearchScreen() {
     () =>
       spotsMapHtml(
         results.map(({ spot, condition }) => ({ ...spotPoint(spot), color: condition.color })),
-        { zoom: RESULT_SPOT_ZOOM, origin: departCoords }
+        { zoom: RESULT_SPOT_ZOOM }
       ),
-    // departCoords volontairement absent : l'animation ne se rejoue qu'à
-    // chaque nouvelle liste de résultats (nouvelle recherche).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [results]
   );
+
+  // Écran de chargement plein écran au lancement d'une recherche : traits
+  // du point de départ vers les spots candidats. Il se ferme en fondu une
+  // fois l'animation jouée ET les conditions récupérées.
+  const [loaderHtml, setLoaderHtml] = useState<string | null>(null);
+  const [introDone, setIntroDone] = useState(false);
+  const loaderOpacity = useRef(new Animated.Value(1)).current;
+
+  function startSearch() {
+    setSearched(true);
+    if (!departCoords || !spotDistances) return;
+    const candidates = spotDistances.filter((d) => d.km <= distanceMaxKm).map((d) => d.spot);
+    setLoaderHtml(
+      spotsMapHtml(
+        candidates.map((spot) => ({ ...spotPoint(spot), color: colors.blue })),
+        { loader: true, origin: departCoords }
+      )
+    );
+    setIntroDone(false);
+    loaderOpacity.setValue(1);
+  }
+
+  useEffect(() => {
+    if (!loaderHtml) return;
+    // Filet de sécurité : carte qui ne charge pas (hors ligne…).
+    const timeout = setTimeout(() => setIntroDone(true), 5000);
+    return () => clearTimeout(timeout);
+  }, [loaderHtml]);
+
+  useEffect(() => {
+    if (!loaderHtml || !introDone || loadingResults) return;
+    Animated.timing(loaderOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(() =>
+      setLoaderHtml(null)
+    );
+  }, [loaderHtml, introDone, loadingResults, loaderOpacity]);
 
   // Carte plein écran : tous les spots (pas seulement ceux dans le rayon de
   // recherche), colorés selon les conditions du même jour / créneau.
@@ -448,7 +481,7 @@ export default function SearchScreen() {
             <Text style={styles.hint}>Spot le plus proche : {minDistanceKm} km</Text>
           )}
 
-          <Pressable style={[styles.searchButton, isOutOfRange && styles.searchButtonDisabled]} disabled={isOutOfRange} onPress={() => setSearched(true)}>
+          <Pressable style={[styles.searchButton, isOutOfRange && styles.searchButtonDisabled]} disabled={isOutOfRange} onPress={startSearch}>
             <Text style={styles.searchButtonText}>CHERCHER</Text>
           </Pressable>
 
@@ -644,6 +677,24 @@ export default function SearchScreen() {
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+      <Modal visible={loaderHtml != null} transparent animationType="none" statusBarTranslucent>
+        <Animated.View style={[styles.loader, { opacity: loaderOpacity }]}>
+          {loaderHtml && (
+            <WebView
+              style={styles.loaderMap}
+              source={{ html: loaderHtml }}
+              scrollEnabled={false}
+              onMessage={(e: WebViewMessageEvent) => {
+                if (e.nativeEvent.data === 'introDone') setIntroDone(true);
+              }}
+            />
+          )}
+          <View style={styles.loaderCaption} pointerEvents="none">
+            <Text style={styles.loaderTitle}>ZONEKITE</Text>
+            <Text style={styles.loaderText}>Recherche des meilleures conditions…</Text>
+          </View>
+        </Animated.View>
       </Modal>
     </SafeAreaView>
   );
@@ -873,6 +924,20 @@ const styles = StyleSheet.create({
   searchButtonDisabled: { opacity: 0.5 },
   searchButtonText: { fontFamily: typography.h3.fontFamily, fontSize: 13.5, color: colors.neutral.white, letterSpacing: 0.5 },
   resultsContainer: { flex: 1 },
+  loader: { flex: 1, backgroundColor: '#D4E1E9' },
+  loaderMap: { flex: 1, backgroundColor: '#D4E1E9' },
+  loaderCaption: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 56,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: colors.navy(0.82),
+  },
+  loaderTitle: { ...typography.mono, color: colors.white(0.6), letterSpacing: 2 },
+  loaderText: { fontFamily: typography.h3.fontFamily, fontSize: 14, color: colors.neutral.white, marginTop: 4 },
   mapContainer: { height: 150, backgroundColor: '#D4E1E9' },
   map: { flex: 1 },
   mapExpandButton: {

@@ -2,6 +2,7 @@
 // renvoyés à l'app via postMessage sont préfixés :
 //   "spot:<id>"  → ouvrir la fiche du spot
 //   "expand"     → appui sur le fond de carte (ouvrir la carte en grand)
+//   "introDone"  → fin de l'animation de l'écran de chargement
 
 export interface MapMarker {
   id: string;
@@ -21,12 +22,17 @@ interface Options {
   zoom?: number;
   // Spots sur lesquels cadrer la vue initiale (tous si absent).
   fitIds?: string[];
-  // Point de départ de la recherche : animation d'ouverture (traits tracés
-  // vers chaque spot sur la vue France, puis zoom sur le premier résultat).
+  // Écran de chargement de la recherche : carte plein écran, traits tracés
+  // du point de départ (origin) vers chaque spot, puis message "introDone"
+  // envoyé à l'app pour qu'elle ferme l'écran.
+  loader?: boolean;
   origin?: { lat: number; lon: number } | null;
 }
 
-export function spotsMapHtml(markers: MapMarker[], { fullscreen = false, zoom = 12, fitIds, origin }: Options = {}) {
+export function spotsMapHtml(
+  markers: MapMarker[],
+  { fullscreen = false, zoom = 12, fitIds, loader = false, origin }: Options = {}
+) {
   // Les données passent en JSON (et les textes via textContent côté page) :
   // pas d'injection HTML possible depuis un nom de spot.
   const data = JSON.stringify(markers);
@@ -59,9 +65,10 @@ export function spotsMapHtml(markers: MapMarker[], { fullscreen = false, zoom = 
     const fitIds = ${fit};
     const origin = ${start};
     const fullscreen = ${fullscreen};
+    const loader = ${loader};
     const post = (msg) => window.ReactNativeWebView && window.ReactNativeWebView.postMessage(msg);
 
-    const map = L.map('map', { zoomControl: fullscreen, attributionControl: false });
+    const map = L.map('map', { zoomControl: fullscreen, attributionControl: false, ...(loader ? { dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, zoomSnap: 0.1 } : {}) });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
     function popupContent(m) {
@@ -92,9 +99,9 @@ export function spotsMapHtml(markers: MapMarker[], { fullscreen = false, zoom = 
     }
 
     // Ordre d'arrivée des traits : du spot le plus proche au plus loin, sur
-    // ~0,8 s au total, chaque trait se dessinant en 0,38 s.
-    const RAY_STAGGER_TOTAL = 800;
-    const RAY_DRAW = 380;
+    // ~1,1 s au total, chaque trait se dessinant en 0,48 s.
+    const RAY_STAGGER_TOTAL = 1100;
+    const RAY_DRAW = 480;
     const order = origin
       ? markers.slice().sort((a, b) => dist2(a) - dist2(b)).map((m) => m.id)
       : [];
@@ -125,7 +132,8 @@ export function spotsMapHtml(markers: MapMarker[], { fullscreen = false, zoom = 
 
     function playIntro() {
       const all = markers.map((m) => [m.lat, m.lon]).concat([[origin.lat, origin.lon]]);
-      map.fitBounds(all, { padding: [18, 18], animate: false });
+      // Zoom au dixième (zoomSnap) : les spots remplissent l'écran au plus juste.
+      map.fitBounds(all, { padding: [28, 28], animate: false });
 
       L.marker([origin.lat, origin.lon], {
         icon: L.divIcon({ className: '', html: '<div class="zk-origin zk-pop"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
@@ -155,35 +163,26 @@ export function spotsMapHtml(markers: MapMarker[], { fullscreen = false, zoom = 
       });
 
       const end = RAY_STAGGER_TOTAL + RAY_DRAW + 250;
-      const FADE = 400;
       // Animation image par image (requestAnimationFrame) plutôt qu'en CSS :
-      // plus fiable dans les WebView. Chaque trait se dessine (ease-out),
-      // puis tous s'effacent ensemble.
+      // plus fiable dans les WebView. Chaque trait se dessine (ease-out).
       const t0 = performance.now();
       function frame(now) {
         const t = now - t0;
         rays.forEach((r) => {
           const k = Math.min(1, Math.max(0, (t - r.start) / RAY_DRAW));
           r.path.style.strokeDashoffset = r.len * Math.pow(1 - k, 3);
-          if (t > end) r.path.style.opacity = Math.max(0, r.opacity * (1 - (t - end) / FADE));
         });
-        if (t < end + FADE) requestAnimationFrame(frame);
-        else rays.forEach((r) => r.path.remove());
+        if (t < end) requestAnimationFrame(frame);
       }
       requestAnimationFrame(frame);
-
-      // Puis la carte rejoint le premier résultat (ou celui demandé
-      // entre-temps par le défilement de la liste).
-      setTimeout(() => {
-        introRunning = false;
-        const target = pendingTarget || [framed[0].lat, framed[0].lon];
-        map.flyTo(target, ${zoom}, { duration: 0.9 });
-      }, end + 150);
+      // Les traits restent affichés : c'est l'app qui fait disparaître
+      // l'écran de chargement en fondu.
+      setTimeout(() => post('introDone'), end + 100);
     }
 
-    // Animation d'ouverture (aperçu de recherche avec point de départ) :
-    // les points n'apparaissent qu'à l'arrivée de leur trait.
-    const intro = !fullscreen && origin && markers.length > 0;
+    // Animation de l'écran de chargement : les points n'apparaissent qu'à
+    // l'arrivée de leur trait.
+    const intro = loader && origin && markers.length > 0;
 
     markers.forEach((m) => {
       const icon = L.divIcon({
@@ -216,15 +215,7 @@ export function spotsMapHtml(markers: MapMarker[], { fullscreen = false, zoom = 
       map.setView([46.6, -1.5], 5);
     }
 
-    // Pendant l'animation, les demandes de recentrage (défilement de la
-    // liste) sont mises de côté et appliquées à la fin.
-    let introRunning = !!intro;
-    let pendingTarget = null;
     window.zonekiteFlyTo = function (lat, lon) {
-      if (introRunning) {
-        pendingTarget = [lat, lon];
-        return;
-      }
       map.flyTo([lat, lon], ${zoom}, { duration: 0.6 });
     };
   </script>
