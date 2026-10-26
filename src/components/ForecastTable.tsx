@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
 import {
@@ -11,6 +20,7 @@ import {
   type Level,
 } from '../lib/matching';
 import type { Spot } from '../types/spot';
+import { hapticSelection } from '../lib/haptics';
 
 // Tableau de prévisions heure par heure, inspiré de Windguru : une colonne
 // par heure, une ligne par critère, chaque case colorée selon qu'elle est
@@ -79,6 +89,15 @@ export default function ForecastTable({ spot, initialDate, highlightStart, highl
   const [error, setError] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialDate ?? localDateIso(new Date()));
   const scrollRef = useRef<ScrollView>(null);
+  // Défilement des heures au doigt : un cran à chaque colonne qui passe.
+  // Les positionnements faits par l'app (changement de jour) restent muets.
+  const userScrolling = useRef(false);
+  const lastColumn = useRef<number | null>(null);
+  function handleHoursScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const column = Math.round(e.nativeEvent.contentOffset.x / COL_W);
+    if (userScrolling.current && lastColumn.current != null && column !== lastColumn.current) hapticSelection();
+    lastColumn.current = column;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -115,11 +134,13 @@ export default function ForecastTable({ spot, initialDate, highlightStart, highl
     const isToday = day.dateIso === localDateIso(new Date());
     const target = isSearchDay && highlightStart != null ? highlightStart : isToday ? new Date().getHours() : 10;
     const index = Math.max(0, day.hours.findIndex((h) => h.hour >= target));
+    userScrolling.current = false;
     const timer = setTimeout(() => scrollRef.current?.scrollTo({ x: Math.max(0, (index - 1) * COL_W), animated: false }), 0);
     return () => clearTimeout(timer);
   }, [day?.dateIso, days != null]);
 
   function selectDay(dateIso: string) {
+    if (dateIso !== day?.dateIso) hapticSelection();
     setSelectedDate(dateIso);
     onDayChange?.(dateIso);
   }
@@ -176,7 +197,15 @@ export default function ForecastTable({ spot, initialDate, highlightStart, highl
             <RowLabel height={ROW.tide} label="Marée" />
           </View>
 
-          <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={handleHoursScroll}
+            onScrollBeginDrag={() => (userScrolling.current = true)}
+            onMomentumScrollEnd={() => (userScrolling.current = false)}
+          >
             {day.hours.map((h) => {
               const highlighted = isSearchDay && highlightStart != null && highlightEnd != null
                 && h.hour >= highlightStart && h.hour <= highlightEnd;

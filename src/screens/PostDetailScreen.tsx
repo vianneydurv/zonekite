@@ -28,6 +28,7 @@ import ReportModal, { type ReportContext } from '../components/ReportModal';
 import { spots } from '../data/spots';
 import type { ForumComment, ForumPost } from '../types/forum';
 import type { Trajet } from '../types/trajet';
+import { hapticTap } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<ForumStackParamList, 'PostDetail'>;
 
@@ -69,6 +70,7 @@ export default function PostDetailScreen({ route }: Props) {
 
   async function handleSend() {
     if (!draft.trim() || !post) return;
+    hapticTap();
     const profile = await getProfile();
     const comment: ForumComment = {
       id: `${Date.now()}`,

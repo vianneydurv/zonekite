@@ -16,6 +16,7 @@ import { conducteurLabel, type Profile } from '../types/profile';
 import type { RideRequest } from '../types/rideRequest';
 import { isCurrentUserAdmin } from '../lib/admin';
 import ReportModal, { type ReportContext } from '../components/ReportModal';
+import { hapticPress, hapticSuccess } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'TripDetail'>;
 
@@ -57,7 +58,9 @@ export default function TripDetailScreen({ route, navigation }: Props) {
 
   async function handleRequest() {
     if (myRequest || isFull) return;
+    hapticPress();
     await requestSeat(trip!, profile);
+    hapticSuccess();
     setMyRequest({
       id: `${trip!.id}_pending`,
       tripId: trip!.id,

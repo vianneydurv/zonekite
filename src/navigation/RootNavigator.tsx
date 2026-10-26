@@ -9,6 +9,7 @@ import CarpoolStackNavigator from './CarpoolStackNavigator';
 import ForumStackNavigator from './ForumStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
 import { colors } from '../theme';
+import { hapticSelection } from '../lib/haptics';
 
 // Le prototype Claude Design n'a que 4 onglets (pas de "Spots" séparé : on y
 // accède depuis la Recherche).
@@ -53,6 +54,8 @@ export default function RootNavigator() {
   return (
     <NavigationContainer ref={navigationRef} onReady={() => setReady(true)}>
       <Tab.Navigator
+        // Petit cran au changement d'onglet.
+        screenListeners={{ tabPress: () => hapticSelection() }}
         screenOptions={({ route }) => ({
           headerShown: false,
           // Fondu rapide au changement d'onglet plutôt qu'une coupure nette.

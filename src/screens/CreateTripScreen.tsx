@@ -19,6 +19,7 @@ import { getProfile } from '../lib/profileStorage';
 import { auth } from '../lib/firebase';
 import { localDateIso } from '../lib/matching';
 import type { Trajet } from '../types/trajet';
+import { hapticPress } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<CarpoolStackParamList, 'CreateTrip'>;
 
@@ -110,6 +111,7 @@ export default function CreateTripScreen({ navigation, route }: Props) {
 
   async function handleSubmit() {
     if (!canSubmit || !spotId || !heureDepart) return;
+    hapticPress();
 
     if (editingTrip) {
       // On préserve les places déjà prises (acceptées) : si le conducteur

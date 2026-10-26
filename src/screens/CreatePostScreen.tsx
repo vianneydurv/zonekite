@@ -6,6 +6,7 @@ import { colors, typography } from '../theme';
 import { addPost, getPosts, updatePost } from '../lib/forumStorage';
 import { getProfile } from '../lib/profileStorage';
 import type { ForumPost, ForumTag } from '../types/forum';
+import { hapticPress } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<ForumStackParamList, 'CreatePost'>;
 
@@ -38,6 +39,7 @@ export default function CreatePostScreen({ navigation, route }: Props) {
 
   async function handleSubmit() {
     if (!canSubmit) return;
+    hapticPress();
 
     if (editingPostId) {
       await updatePost(editingPostId, { titre: titre.trim(), contenu: contenu.trim(), tag });

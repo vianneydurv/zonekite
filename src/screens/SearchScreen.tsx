@@ -28,6 +28,7 @@ import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/matching';
 import { distanceKm, geocodeAddress, type Coords } from '../lib/geocoding';
 import { spots } from '../data/spots';
+import { hapticArrival, hapticPress, hapticSelection, hapticSuccess, hapticTap } from '../lib/haptics';
 import type { Spot } from '../types/spot';
 
 const DISTANCE_STEP_KM = 10;
@@ -108,6 +109,10 @@ export default function SearchScreen() {
   const [startHour, setStartHour] = useState(10);
   const [endHour, setEndHour] = useState(18);
   const [pickerMode, setPickerMode] = useState<'start' | 'end' | 'distance' | null>(null);
+  function openPicker(mode: 'start' | 'end' | 'distance') {
+    hapticTap();
+    setPickerMode(mode);
+  }
   const [adresseDepart, setAdresseDepart] = useState('');
   const [departDraft, setDepartDraft] = useState('');
   const [showDepartEditor, setShowDepartEditor] = useState(false);
@@ -217,10 +222,16 @@ export default function SearchScreen() {
     );
   }, []);
 
+  const topSpotId = useRef<string | null>(null);
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<{ item: { spot: Spot } }> }) => {
       const top = viewableItems[0]?.item.spot;
-      if (top) flyToSpot(top);
+      if (!top) return;
+      // Un cran à chaque nouveau spot en tête de liste (pas au premier
+      // affichage des résultats).
+      if (topSpotId.current != null && topSpotId.current !== top.id) hapticSelection();
+      topSpotId.current = top.id;
+      flyToSpot(top);
     }
   ).current;
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
@@ -242,6 +253,8 @@ export default function SearchScreen() {
   const loaderOpacity = useRef(new Animated.Value(1)).current;
 
   function startSearch() {
+    hapticPress();
+    topSpotId.current = null;
     setSearched(true);
     if (!departCoords || !spotDistances) return;
     const candidates = spotDistances.filter((d) => d.km <= distanceMaxKm).map((d) => d.spot);
@@ -298,6 +311,8 @@ export default function SearchScreen() {
 
   // Mise à jour immédiate de l'étoile, recalée sur Firestore ensuite.
   function handleToggleFavorite(spotId: string) {
+    if (favoriteIds.includes(spotId)) hapticTap();
+    else hapticSuccess();
     setFavoriteIds((ids) => (ids.includes(spotId) ? ids.filter((id) => id !== spotId) : [...ids, spotId]));
     toggleFavorite(spotId)
       .then(setFavoriteIds)
@@ -360,7 +375,13 @@ export default function SearchScreen() {
               <Text style={styles.summaryLabel}>DÉPART</Text>
               <Text style={styles.summaryValue} numberOfLines={1}>{adresseDepart || '—'}</Text>
             </View>
-            <Pressable style={styles.editButton} onPress={() => setSearched(false)}>
+            <Pressable
+              style={styles.editButton}
+              onPress={() => {
+                hapticTap();
+                setSearched(false);
+              }}
+            >
               <Ionicons name="pencil" size={16} color={colors.neutral.white} />
             </Pressable>
           </View>
@@ -399,7 +420,10 @@ export default function SearchScreen() {
                         inWindow && styles.dayCellInWindow,
                         selected && styles.dayCellSelected,
                       ]}
-                      onPress={() => setSelectedDate(date)}
+                      onPress={() => {
+                        if (!isSameDay(date, selectedDate)) hapticSelection();
+                        setSelectedDate(date);
+                      }}
                     >
                       <Text
                         style={[
@@ -435,14 +459,14 @@ export default function SearchScreen() {
 
           <Text style={styles.sectionLabel}>PLAGE HORAIRE</Text>
           <View style={styles.hourRow}>
-            <Pressable style={styles.hourField} onPress={() => setPickerMode('start')}>
+            <Pressable style={styles.hourField} onPress={() => openPicker('start')}>
               <Text style={styles.fieldLabel}>DÉBUT</Text>
               <View style={styles.hourValueRow}>
                 <Text style={styles.fieldValue}>{formatHour(startHour)}</Text>
                 <Ionicons name="chevron-down" size={16} color={colors.neutral.textSecondary} />
               </View>
             </Pressable>
-            <Pressable style={styles.hourField} onPress={() => setPickerMode('end')}>
+            <Pressable style={styles.hourField} onPress={() => openPicker('end')}>
               <Text style={styles.fieldLabel}>FIN</Text>
               <View style={styles.hourValueRow}>
                 <Text style={styles.fieldValue}>{formatHour(endHour)}</Text>
@@ -458,6 +482,7 @@ export default function SearchScreen() {
             </View>
             <Pressable
               onPress={() => {
+                hapticTap();
                 setDepartDraft(adresseDepart);
                 setShowDepartEditor(true);
               }}
@@ -466,7 +491,7 @@ export default function SearchScreen() {
             </Pressable>
           </View>
 
-          <Pressable style={styles.listItem} onPress={() => setPickerMode('distance')}>
+          <Pressable style={styles.listItem} onPress={() => openPicker('distance')}>
             <View>
               <Text style={styles.fieldLabel}>DISTANCE MAX</Text>
               {geocoding && !departCoords ? (
@@ -536,7 +561,14 @@ export default function SearchScreen() {
                 if (spot) openSpot(spot);
               }}
             />
-            <Pressable style={styles.mapExpandButton} onPress={openFullMap} hitSlop={8}>
+            <Pressable
+              style={styles.mapExpandButton}
+              onPress={() => {
+                hapticTap();
+                openFullMap();
+              }}
+              hitSlop={8}
+            >
               <Ionicons name="expand" size={16} color={colors.navyBase} />
             </Pressable>
           </View>
@@ -591,14 +623,15 @@ export default function SearchScreen() {
                   carpoolCount={carpoolCounts[item.spot.id] ?? 0}
                   isFavorite={favoriteIds.includes(item.spot.id)}
                   onToggleFavorite={() => handleToggleFavorite(item.spot.id)}
-                  onPress={() =>
+                  onPress={() => {
+                    hapticTap();
                     navigation.navigate('SpotDetail', {
                       spot: item.spot,
                       searchDate: dateIso,
                       searchStartHour: startHour,
                       searchEndHour: endHour,
-                    })
-                  }
+                    });
+                  }}
                   onCarpoolPress={() => navigation.getParent()?.navigate('Carpool')}
                 />
               </View>
@@ -620,6 +653,7 @@ export default function SearchScreen() {
               <Picker
                 selectedValue={pickerMode === 'start' ? startHour : endHour}
                 onValueChange={(value) => {
+                  hapticSelection();
                   if (pickerMode === 'start') setStartHour(Number(value));
                   else setEndHour(Number(value));
                 }}
@@ -634,6 +668,7 @@ export default function SearchScreen() {
               <Picker
                 selectedValue={distanceMaxKm}
                 onValueChange={(value) => {
+                  hapticSelection();
                   setDistanceMaxKm(Number(value));
                   AsyncStorage.setItem(DISTANCE_STORAGE_KEY, String(value)).catch(() => {});
                 }}
@@ -644,7 +679,13 @@ export default function SearchScreen() {
                 ))}
               </Picker>
             )}
-            <Pressable style={styles.departConfirmButton} onPress={() => setPickerMode(null)}>
+            <Pressable
+              style={styles.departConfirmButton}
+              onPress={() => {
+                hapticTap();
+                setPickerMode(null);
+              }}
+            >
               <Text style={styles.departConfirmText}>VALIDER</Text>
             </Pressable>
           </Pressable>
@@ -669,6 +710,7 @@ export default function SearchScreen() {
             <Pressable
               style={styles.departConfirmButton}
               onPress={() => {
+                hapticTap();
                 setAdresseDepart(departDraft.trim() || adresseDepart);
                 setShowDepartEditor(false);
               }}
@@ -686,7 +728,10 @@ export default function SearchScreen() {
               source={{ html: loaderHtml }}
               scrollEnabled={false}
               onMessage={(e: WebViewMessageEvent) => {
-                if (e.nativeEvent.data === 'introDone') setIntroDone(true);
+                const data = e.nativeEvent.data;
+                // Un petit cran à chaque trait qui touche un spot.
+                if (data === 'arrive') hapticArrival();
+                else if (data === 'introDone') setIntroDone(true);
               }}
             />
           )}

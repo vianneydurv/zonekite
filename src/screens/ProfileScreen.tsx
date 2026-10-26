@@ -32,6 +32,7 @@ import { sendFeedback } from '../lib/moderation';
 import ReportModal, { type ReportContext } from '../components/ReportModal';
 import BlockedMembersModal from '../components/BlockedMembersModal';
 import { CGU_URL } from '../lib/terms';
+import { hapticSuccess } from '../lib/haptics';
 
 const NEXT_RIDE_STATUS_LABELS: Record<RideRequestStatus, string> = {
   pending: 'EN ATTENTE',
@@ -115,6 +116,7 @@ export default function ProfileScreen() {
     setSendingFeedback(true);
     try {
       await sendFeedback(message, profile?.prenom);
+      hapticSuccess();
       setFeedbackDraft('');
       Alert.alert('Merci !', 'Ton message a bien été envoyé à l’équipe ZoneKite.');
     } catch {
