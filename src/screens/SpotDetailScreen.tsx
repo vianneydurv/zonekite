@@ -8,6 +8,7 @@ import { getSpotCondition, localDateIso, type SpotCondition } from '../lib/match
 import ForecastTable, { TIDE_LABELS } from '../components/ForecastTable';
 import { getFavoriteIds, toggleFavorite } from '../lib/favorites';
 import { spotPhotos } from '../data/spotPhotos';
+import { commonsPageUrl } from '../lib/credits';
 import type { Spot } from '../types/spot';
 
 interface Props {
@@ -66,6 +67,12 @@ export default function SpotDetailScreen({ route }: Props) {
           <View style={styles.heroPlaceholder}>
             <Ionicons name="image-outline" size={32} color={colors.navy(0.3)} />
           </View>
+        )}
+        {spotPhotos[spot.id] && spot.photoUrl && (
+          // Crédit de la photo : auteur et licence sur sa page Commons.
+          <Pressable style={styles.photoCredit} hitSlop={8} onPress={() => Linking.openURL(commonsPageUrl(spot.photoUrl!))}>
+            <Text style={styles.photoCreditText}>Photo · Wikimedia Commons</Text>
+          </Pressable>
         )}
       </View>
       <Pressable style={styles.itineraryBar} onPress={() => openItinerary(spot)}>
@@ -194,6 +201,16 @@ export default function SpotDetailScreen({ route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral.background },
   hero: { height: 200 },
+  photoCredit: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: 'rgba(6,46,69,0.45)',
+  },
+  photoCreditText: { ...typography.caption, fontSize: 9.5, color: colors.neutral.white },
   heroImage: { width: '100%', height: '100%' },
   heroPlaceholder: {
     width: '100%',

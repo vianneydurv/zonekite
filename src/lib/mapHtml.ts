@@ -55,6 +55,7 @@ export function spotsMapHtml(
     .zk-popup-link { display: block; margin-top: 8px; font-weight: 700; font-size: 12px; color: #0A6EA8; }
     .zk-pop { animation: zk-pop 0.28s cubic-bezier(.2,1.6,.4,1) both; }
     @keyframes zk-pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .leaflet-control-attribution { font-size: 9px; background: rgba(255,255,255,0.7) !important; color: rgba(6,46,69,0.7); }
     .zk-hidden { opacity: 0; }
     .zk-hidden.zk-pop { opacity: 1; }
     .zk-ring { position: relative; }
@@ -74,8 +75,11 @@ export function spotsMapHtml(
     const loader = ${loader};
     const post = (msg) => window.ReactNativeWebView && window.ReactNativeWebView.postMessage(msg);
 
-    const map = L.map('map', { zoomControl: fullscreen, attributionControl: false, ...(loader ? { dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, zoomSnap: 0.1 } : {}) });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const map = L.map('map', { zoomControl: fullscreen, attributionControl: true, ...(loader ? { dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, zoomSnap: 0.1 } : {}) });
+    // Mention obligatoire des données OpenStreetMap (licence ODbL), en texte
+    // simple : un lien ouvrirait le site dans la WebView de la carte.
+    map.attributionControl.setPrefix(false);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
     function popupContent(m) {
       const root = document.createElement('div');

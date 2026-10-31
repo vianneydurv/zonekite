@@ -308,6 +308,11 @@ export default function ProfileScreen() {
                 label="Conditions d'utilisation"
                 onPress={() => fromSettings(() => Linking.openURL(CGU_URL))}
               />
+              <MenuRow
+                icon="information-circle-outline"
+                label="Crédits et sources"
+                onPress={() => fromSettings(() => navigation.navigate('Credits'))}
+              />
               {isAdmin && (
                 <MenuRow
                   icon="shield-checkmark-outline"

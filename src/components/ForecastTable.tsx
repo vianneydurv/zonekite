@@ -280,6 +280,7 @@ export default function ForecastTable({ spot, initialDate, highlightStart, highl
         <LegendItem color={LEVEL_COLORS.moyen} label="Limite" />
         <LegendItem color={LEVEL_COLORS.mauvais} label="Peu navigable" />
       </View>
+      <Text style={styles.source}>Prévisions météo : Open-Meteo.com · marée estimée</Text>
     </View>
   );
 }
@@ -393,4 +394,5 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendSwatch: { width: 10, height: 10, borderRadius: 3 },
   legendText: { ...typography.caption, color: colors.navy(0.6) },
+  source: { ...typography.caption, fontSize: 10, color: colors.navy(0.4), textAlign: 'center', marginTop: 8 },
 });

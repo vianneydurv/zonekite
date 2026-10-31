@@ -1,9 +1,11 @@
 // Photos locales des spots (require statique obligatoire pour Metro).
-// Une entrée par spot id — voir src/data/spots.ts.
+// Une entrée par spot id — voir src/data/spots.ts. Chaque photo doit être
+// celle de Spot.photoUrl (Wikimedia Commons, licence libre), créditée dans
+// l'app : le script scripts/fetch-spot-photos.mjs les télécharge et
+// régénère ce fichier. Un spot sans photo affiche un fond neutre.
 export const spotPhotos: Record<string, number> = {
   wissant: require('../../assets/spots/wissant.jpg'),
   sangatte: require('../../assets/spots/sangatte.jpg'),
-  'le-crotoy': require('../../assets/spots/le-crotoy.jpg'),
   'berck-plage': require('../../assets/spots/berck-plage.jpg'),
   'merville-franceville-plage': require('../../assets/spots/merville-franceville-plage.jpg'),
   'siouville-hague': require('../../assets/spots/siouville-hague.jpg'),
@@ -25,13 +27,10 @@ export const spotPhotos: Record<string, number> = {
   'plage-des-dunes-sables-dolonne': require('../../assets/spots/plage-des-dunes-sables-dolonne.jpg'),
   'fromentine-la-barre-de-monts': require('../../assets/spots/fromentine-la-barre-de-monts.jpg'),
   'barbatre-noirmoutier': require('../../assets/spots/barbatre-noirmoutier.jpg'),
-  'le-gois-noirmoutier': require('../../assets/spots/le-gois-noirmoutier.jpg'),
   'chatelaillon-plage': require('../../assets/spots/chatelaillon-plage.jpg'),
-  aytre: require('../../assets/spots/aytre.jpg'),
   'le-boutillon-ile-de-re': require('../../assets/spots/le-boutillon-ile-de-re.jpg'),
   'plage-des-seulieres-oleron': require('../../assets/spots/plage-des-seulieres-oleron.jpg'),
   'la-hume-gujan-mestras': require('../../assets/spots/la-hume-gujan-mestras.jpg'),
-  'la-salie-sud-la-teste-de-buch': require('../../assets/spots/la-salie-sud-la-teste-de-buch.jpg'),
   'lacanau-ocean': require('../../assets/spots/lacanau-ocean.jpg'),
   'les-estagnots-seignosse': require('../../assets/spots/les-estagnots-seignosse.jpg'),
   'la-madrague-anglet': require('../../assets/spots/la-madrague-anglet.jpg'),
